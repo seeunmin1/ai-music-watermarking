@@ -15,7 +15,7 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
      (Suno / ElevenLabs / OpenAI / SynthID strings in metadata).
    • Instant statutory verdict: AI-Generated vs Unmarked, with
      provider / system+version / timestamp / unique ID resolution.
-   • Persistent registry + audit log (window.storage w/ fallback).
+   • Persistent registry + audit log (browser localStorage).
    Stubs (labeled in UI): SynthID & AudioSeal signal decoders,
    real Ed25519 signing.
    ================================================================ */
@@ -227,15 +227,20 @@ async function sha256Hex(buf) {
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/* ---------------- PERSISTENCE ---------------- */
-const mem = { registry: [], audit: [] };
-async function loadState(key, fallback) {
-  try { const r = await window.storage.get("audiomark:" + key); return r ? JSON.parse(r.value) : fallback; }
-  catch { return mem[key] || fallback; }
+/* ---------------- PERSISTENCE ----------------
+   Browser localStorage — MVP-scoped to this device/browser. */
+function loadState(key, fallback) {
+  try {
+    const raw = localStorage.getItem("audiomark:" + key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
 }
-async function saveState(key, value) {
-  mem[key] = value;
-  try { await window.storage.set("audiomark:" + key, JSON.stringify(value)); } catch {}
+function saveState(key, value) {
+  try {
+    localStorage.setItem("audiomark:" + key, JSON.stringify(value));
+  } catch {}
 }
 
 /* ---------------- MANIFEST ---------------- */
@@ -367,10 +372,8 @@ export default function AudiomarkAI() {
   const [audit, setAudit] = useState([]);
 
   useEffect(() => {
-    (async () => {
-      setRegistry(await loadState("registry", []));
-      setAudit(await loadState("audit", []));
-    })();
+    setRegistry(loadState("registry", []));
+    setAudit(loadState("audit", []));
   }, []);
 
   const log = useCallback((type, detail) => {
