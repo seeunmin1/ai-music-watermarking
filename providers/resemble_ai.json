@@ -1,0 +1,21 @@
+{
+  "provider_id": "resemble_ai",
+  "display_name": "Resemble AI",
+  "aliases": ["resemble ai", "resemble"],
+  "products": ["Resemble AI"],
+  "supported_media": ["audio/wav", "audio/mpeg", "audio/aac", "audio/flac"],
+  "signals": ["provider_watermark", "metadata_hint", "classifier"],
+  "c2pa_issuers": ["Resemble AI"],
+  "official_verification": {
+    "adapter": "manual",
+    "status": "manual",
+    "env_url": "AUDIOMARK_RESEMBLE_AI_VERIFY_URL",
+    "auth": "account"
+  },
+  "confidence_policy": {
+    "official_verified": 98,
+    "trusted_c2pa": 94,
+    "metadata_hint": 20
+  },
+  "parser_adapter": "generic"
+}

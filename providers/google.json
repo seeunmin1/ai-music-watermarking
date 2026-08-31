@@ -1,0 +1,23 @@
+{
+  "provider_id": "google",
+  "display_name": "Google",
+  "aliases": ["google", "gemini", "synthid", "lyria", "notebook lm", "notebooklm"],
+  "products": ["Gemini", "Lyria", "NotebookLM"],
+  "supported_media": ["audio/wav", "audio/mpeg", "audio/aac", "audio/flac", "audio/ogg"],
+  "signals": ["synthid", "official_portal", "c2pa"],
+  "c2pa_issuers": ["Google", "Google DeepMind"],
+  "official_verification": {
+    "adapter": "manual",
+    "status": "partner_only",
+    "env_url": "AUDIOMARK_GOOGLE_VERIFY_URL",
+    "env_key": "AUDIOMARK_GOOGLE_VERIFY_KEY",
+    "portal": "https://deepmind.google/models/synthid/",
+    "auth": "partner"
+  },
+  "confidence_policy": {
+    "official_verified": 98,
+    "trusted_c2pa": 95,
+    "metadata_hint": 20
+  },
+  "parser_adapter": "google_synthid"
+}

@@ -1,0 +1,21 @@
+{
+  "provider_id": "adobe",
+  "display_name": "Adobe",
+  "aliases": ["adobe", "firefly"],
+  "products": ["Adobe Firefly"],
+  "supported_media": ["audio/wav", "audio/mpeg", "audio/aac", "audio/flac"],
+  "signals": ["c2pa", "content_credentials", "metadata_hint"],
+  "c2pa_issuers": ["Adobe", "Adobe Inc."],
+  "official_verification": {
+    "adapter": "c2pa_local",
+    "status": "local",
+    "env_url": "AUDIOMARK_ADOBE_VERIFY_URL",
+    "auth": "none"
+  },
+  "confidence_policy": {
+    "official_verified": 97,
+    "trusted_c2pa": 96,
+    "metadata_hint": 20
+  },
+  "parser_adapter": "generic_c2pa"
+}

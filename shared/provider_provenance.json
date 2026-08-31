@@ -1,0 +1,137 @@
+{
+  "profiles": {
+    "c2pa_manifest": {
+      "label": "C2PA Manifest",
+      "kind": "verified_payload",
+      "verified": true
+    },
+    "google_synthid": {
+      "label": "Google SynthID",
+      "kind": "provider_watermark",
+      "verified": true,
+      "provider": "Google",
+      "system": "Gemini or Google AI",
+      "issuer_terms": ["google", "google deepmind"],
+      "verified_terms": ["google", "gemini", "synthid", "lyria", "notebook lm", "veo", "imagen"],
+      "hint_terms": ["google", "gemini", "synthid", "lyria"],
+      "official_verification": {
+        "status": "manual_or_partner_access",
+        "portal": "https://deepmind.google/models/synthid/"
+      },
+      "local_detection": "payload_or_official_adapter_only"
+    },
+    "openai_synthid": {
+      "label": "OpenAI Verification",
+      "kind": "provider_watermark",
+      "verified": true,
+      "provider": "OpenAI",
+      "system": "OpenAI generated audio",
+      "issuer_terms": ["openai", "chatgpt", "sora"],
+      "verified_terms": ["openai", "chatgpt", "sora", "synthid", "content credentials"],
+      "hint_terms": ["openai", "chatgpt", "sora"],
+      "official_verification": {
+        "status": "public_tool_or_api_when_configured",
+        "portal": "https://openai.com/verify"
+      },
+      "local_detection": "payload_or_official_adapter_only"
+    },
+    "elevenlabs_watermark": {
+      "label": "ElevenLabs Audio Detector",
+      "kind": "provider_watermark",
+      "verified": true,
+      "provider": "ElevenLabs",
+      "system": "ElevenLabs generated audio",
+      "issuer_terms": ["elevenlabs", "eleven labs"],
+      "verified_terms": ["elevenlabs", "eleven labs", "audio detector", "watermark"],
+      "hint_terms": ["elevenlabs", "eleven labs"],
+      "official_verification": {
+        "status": "account_or_portal_required",
+        "portal": "https://elevenlabs.io/docs/eleven-creative/audio-tools/audio-detector"
+      },
+      "local_detection": "classifier_only_without_official_access"
+    },
+    "suno_c2pa": {
+      "label": "Suno Content Credentials",
+      "kind": "verified_payload",
+      "verified": true,
+      "provider": "Suno",
+      "system": "Suno",
+      "issuer_terms": ["suno", "suno, inc", "suno inc"],
+      "verified_terms": ["suno", "content credentials", "c2pa"],
+      "hint_terms": ["suno"],
+      "official_verification": {
+        "status": "public_portal",
+        "portal": "https://suno.com/safety"
+      },
+      "local_detection": "c2pa_payload"
+    },
+    "audiomark_ss_v1": {
+      "label": "Audiomark SS/v1",
+      "kind": "latent_watermark",
+      "verified": true,
+      "provider": "Audiomark Labs",
+      "issuer_terms": ["audiomark"],
+      "verified_terms": ["audiomark", "audiomark-ss/v1"],
+      "official_verification": {
+        "status": "local_registry",
+        "portal": null
+      },
+      "local_detection": "latent_watermark"
+    },
+    "local_attribution_classifier": {
+      "label": "Local Attribution Classifier",
+      "kind": "probable_classifier",
+      "verified": false,
+      "providers": ["Google", "OpenAI", "ElevenLabs", "Suno", "Udio", "Human/Public-domain"],
+      "local_detection": "probable_only"
+    },
+    "metadata_vendor_hint": {
+      "label": "Metadata Vendor Hint",
+      "kind": "metadata_hint",
+      "verified": false
+    },
+    "wmar_clustered_token": {
+      "label": "WMAR Clustered Token",
+      "kind": "experimental_detector",
+      "verified": false,
+      "upstream": "https://github.com/g-milis/nograd-audio-wm",
+      "model_families": ["musicgen_encodec", "moshi_mimi", "cosyvoice", "sparktts"]
+    }
+  },
+  "vendor_labels": {
+    "suno": "Suno",
+    "elevenlabs": "ElevenLabs",
+    "openai": "OpenAI",
+    "chatgpt": "ChatGPT",
+    "sora": "Sora",
+    "synthid": "Google SynthID",
+    "google": "Google",
+    "gemini": "Google Gemini",
+    "audioseal": "Meta AudioSeal",
+    "udio": "Udio",
+    "lyria": "Google Lyria",
+    "stability ai": "Stability AI",
+    "stable audio": "Stable Audio",
+    "meta": "Meta",
+    "musicgen": "Meta MusicGen",
+    "adobe": "Adobe",
+    "firefly": "Adobe Firefly",
+    "microsoft": "Microsoft",
+    "copilot": "Microsoft Copilot",
+    "azure ai": "Azure AI",
+    "bytedance": "ByteDance",
+    "tiktok": "TikTok",
+    "resemble ai": "Resemble AI",
+    "playht": "PlayHT",
+    "play.ht": "PlayHT",
+    "murf": "Murf",
+    "lovo": "Lovo",
+    "genny": "Lovo Genny",
+    "wellsaid": "WellSaid",
+    "speechify": "Speechify",
+    "descript": "Descript",
+    "overdub": "Descript Overdub",
+    "runway": "Runway",
+    "runwayml": "Runway"
+  }
+}

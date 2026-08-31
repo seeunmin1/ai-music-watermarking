@@ -39,6 +39,13 @@ from pathlib import Path
 
 import numpy as np
 
+from local_attribution import DEFAULT_MODEL_PATH, classify, train_centroid_model
+from official_adapters import run_official_checks
+from provider_catalog import vendor_labels_from_catalog
+from provider_discovery import build_report
+from provenance_core import VENDOR_LABELS, analyze_provenance
+from wmar_experimental import build_eval_command, describe_adapter
+
 # ----------------------------------------------------------------------
 # Watermark scheme constants (identical to the JS MVP)
 # ----------------------------------------------------------------------
@@ -54,12 +61,7 @@ STATE_DIR = Path(__file__).resolve().parent
 REGISTRY_PATH = STATE_DIR / "audiomark_registry.json"
 AUDIT_PATH = STATE_DIR / "audiomark_audit.json"
 
-VENDOR_HINTS = ["suno", "elevenlabs", "openai", "synthid",
-                "audioseal", "udio", "lyria"]
-VENDOR_LABELS = {"suno": "Suno", "elevenlabs": "ElevenLabs",
-                 "openai": "OpenAI", "synthid": "Google SynthID",
-                 "audioseal": "Meta AudioSeal", "udio": "Udio",
-                 "lyria": "Google Lyria"}
+VENDOR_HINTS = sorted({*VENDOR_LABELS.keys(), *vendor_labels_from_catalog().keys()})
 
 
 # ----------------------------------------------------------------------
@@ -186,6 +188,20 @@ def read_wav(path: Path):
     return data, rate, raw
 
 
+def try_read_wav(path: Path):
+    """Best-effort WAV reader used by detection.
+
+    Non-WAV uploads can still be checked for metadata, C2PA payloads, and
+    official-provider provenance. The latent Audiomark DSSS detector remains a
+    PCM WAV lane until a general audio decoder is added.
+    """
+    try:
+        samples, rate, raw = read_wav(path)
+        return samples, rate, raw, None
+    except (wave.Error, EOFError, ValueError) as exc:
+        return None, None, path.read_bytes(), str(exc)
+
+
 def write_wav(path: Path, samples: np.ndarray, rate: int,
               extra_chunks: list[tuple[bytes, bytes]] | None = None):
     """Write 16-bit mono WAV; extra_chunks = [(b'c2pa', payload_bytes), ...]."""
@@ -241,12 +257,18 @@ def scan_metadata(data: bytes) -> dict:
     """Find embedded C2PA JSON, ID3v2/JUMBF markers, and vendor hints."""
     low = data.lower()
 
+    def _is_token_byte(value: int) -> bool:
+        return (48 <= value <= 57) or (97 <= value <= 122)
+
     def _vendor_present(v: str) -> bool:
         needle = v.encode()
         i = low.find(needle)
         while i >= 0:
             # "udio" is a substring of "audio" — require a non-'a' predecessor
-            if v != "udio" or i == 0 or low[i - 1] != 0x61:
+            before_ok = i == 0 or not _is_token_byte(low[i - 1])
+            after = i + len(needle)
+            after_ok = after >= len(low) or not _is_token_byte(low[after])
+            if before_ok and after_ok:
                 return True
             i = low.find(needle, i + 1)
         return False
@@ -274,6 +296,7 @@ def scan_metadata(data: bytes) -> dict:
                        if stat.get("system") else m.get("claim_generator", "—")),
             "created": stat.get("created"),
             "unique_id": stat.get("unique_id"),
+            "uid": stat.get("unique_id"),
         }
     return res
 
@@ -362,11 +385,37 @@ def op_embed(in_path: Path, out_path: Path, provider: str, system: str,
 
 
 def op_detect(path: Path) -> dict:
-    samples, _rate, raw = read_wav(path)
-    det = detect_watermark(samples)
+    samples, rate, raw, decode_error = try_read_wav(path)
+    det = detect_watermark(samples) if samples is not None else Detection(False, 0, 0.0, 0.0, 0)
     meta = scan_metadata(raw)
 
     registry = _load(REGISTRY_PATH)
+    official_results = run_official_checks(str(path), meta)
+    classifier_result = (
+        classify(samples, rate, DEFAULT_MODEL_PATH)
+        if samples is not None and rate is not None
+        else {
+            "status": "unsupported",
+            "candidates": [],
+            "detail": f"Local audio classifier skipped because this file could not be decoded as PCM WAV: {decode_error}",
+        }
+    )
+    prov = analyze_provenance(det, meta, registry, official_results, classifier_result)
+    if samples is None:
+        prov["limitations"].append(
+            "Latent Audiomark watermark detection and local attribution currently require PCM WAV input; MP3 uploads still run metadata, C2PA, and official-provider checks."
+        )
+    ai_detected = prov["verdict"] == "ai_generated"
+
+    audit_log("verify",
+              (f"AI-GENERATED verdict for '{path.name}' - "
+               f"resolved via {prov['resolvedVia']}")
+              if ai_detected else
+              f"{'UNKNOWN WITH HINTS' if prov['verdict'] == 'unknown_with_hints' else 'UNMARKED'} "
+              f"verdict for '{path.name}' (z={det.z:.1f}, no verified payload)")
+    return {"detection": det, "metadata": meta, "provenance": prov,
+            "ai_detected": ai_detected}
+
     rec = next((r for r in registry
                 if int(r["id_hex"], 16) == det.record_id), None) if det.found else None
 
@@ -420,6 +469,55 @@ def op_revoke(record_id_hex: str):
 def _print_detect(res: dict, name: str):
     det: Detection = res["detection"]
     meta = res["metadata"]
+    prov = res["provenance"]
+    bar = "-" * 62
+    verdict = "AI-GENERATED" if res["ai_detected"] else (
+        "PROBABLY AI-GENERATED" if prov["claimLevel"] == "probable"
+        else "UNKNOWN WITH METADATA HINTS" if prov["verdict"] == "unknown_with_hints"
+        else "HUMAN CREATED / UNMARKED"
+    )
+    print(bar)
+    print(f"  STATUTORY VERDICT: {verdict}")
+    print(bar)
+    print(f"  Latent watermark : "
+          f"{'DECODED (%dx reps)' % det.repetitions if det.found else 'not detected'}"
+          f"   z={det.z:.2f}  confidence={det.confidence:.1f}%")
+    print(f"  C2PA manifest    : {'PARSED' if meta['manifest'] else 'not found'}")
+    print(f"  JUMBF markers    : {'present' if meta['jumbf'] else 'not found'}")
+    print(f"  ID3v2 block      : {'present' if meta['id3'] else 'not found'}")
+    if meta["vendor_hints"]:
+        hints = ", ".join(VENDOR_LABELS.get(v, v) for v in meta["vendor_hints"])
+        print(f"  Vendor strings   : {hints}")
+    google_verified = any(s["id"] == "google_synthid" and s["status"] == "verified"
+                          for s in prov["signals"])
+    print(f"  SynthID decoder  : {'VERIFIED PAYLOAD' if google_verified else 'unsupported official decoder'}")
+    print("  WMAR detector    : experimental adapter hook")
+    print(bar)
+    if prov["provider"]:
+        print("  PROVIDER IDENTIFICATION" if prov["claimLevel"] == "verified" else "  PROVIDER ATTRIBUTION")
+        print(f"    Claim level         : {prov['claimLevel']}")
+        print(f"    Provider / Platform : {prov['provider']}")
+        print(f"    System version      : {prov['system'] or '-'}")
+        print(f"    Timestamp           : {prov.get('createdAt') or '-'}")
+        print(f"    Unique content ID   : {prov.get('contentId') or '-'}")
+        print(f"    Resolved via        : {prov.get('resolvedVia') or '-'}")
+        if (prov.get("record") or {}).get("status") == "revocation_pending":
+            print("    record is inside its 96-hour revocation window")
+    else:
+        print("  No statutory payload recovered. Absence of a mark is consistent")
+        print("  with human-created content but cannot rule out stripped or")
+        print("  never-marked AI output.")
+    if prov["signals"]:
+        print("  SIGNALS")
+        for signal in prov["signals"]:
+            print(f"    {signal['category']:<22} {signal['label']}: {signal['status']}")
+    if prov["limitations"]:
+        print("  LIMITATIONS")
+        for limitation in prov["limitations"]:
+            print(f"    - {limitation}")
+    print(bar)
+    print(f"  '{name}' was analyzed in memory - nothing retained.")
+    return
     bar = "─" * 62
     print(bar)
     verdict = "AI-GENERATED" if res["ai_detected"] else "HUMAN CREATED / UNMARKED"
@@ -469,6 +567,18 @@ def main(argv=None):
 
     pd = sub.add_parser("detect", help="Mode A: scan a file, print statutory verdict")
     pd.add_argument("input", type=Path)
+    pd.add_argument("--json", action="store_true", help="print normalized result JSON")
+
+    wmar = sub.add_parser("wmar-info", help="describe the experimental nograd-audio-wm adapter")
+    wmar.add_argument("--model-family", choices=["musicgen_encodec", "moshi_mimi", "cosyvoice", "sparktts"],
+                      help="print a reproducible upstream clustered-token eval command")
+
+    train = sub.add_parser("train-attribution", help="train the local probable-attribution model from labeled WAV folders")
+    train.add_argument("dataset_dir", type=Path)
+    train.add_argument("--output", type=Path, default=DEFAULT_MODEL_PATH)
+
+    discover = sub.add_parser("provider-discovery", help="report provider catalog coverage and adapter status")
+    discover.add_argument("--output", type=Path)
 
     pr = sub.add_parser("registry", help="list records / flag a strip")
     pr.add_argument("--revoke", metavar="RECORD_ID",
@@ -486,7 +596,32 @@ def main(argv=None):
         print(f"  {rec['repetitions']}x payload redundancy · manifest embedded in-file")
 
     elif a.cmd == "detect":
-        _print_detect(op_detect(a.input), a.input.name)
+        res = op_detect(a.input)
+        if a.json:
+            print(json.dumps({
+                "detection": asdict(res["detection"]),
+                "metadata": {k: v for k, v in res["metadata"].items() if k != "manifest"},
+                "provenance": res["provenance"],
+                "ai_detected": res["ai_detected"],
+            }, indent=2))
+        else:
+            _print_detect(res, a.input.name)
+
+    elif a.cmd == "wmar-info":
+        print(json.dumps(build_eval_command(a.model_family) if a.model_family else describe_adapter(), indent=2))
+
+    elif a.cmd == "train-attribution":
+        model = train_centroid_model(a.dataset_dir, a.output)
+        for provider, rec in model["providers"].items():
+            print(f"{provider}: {rec['samples']} samples")
+        print(f"wrote {a.output}")
+
+    elif a.cmd == "provider-discovery":
+        report = build_report()
+        payload = json.dumps(report, indent=2)
+        if a.output:
+            a.output.write_text(payload, encoding="utf-8")
+        print(payload)
 
     elif a.cmd == "registry":
         if a.revoke:

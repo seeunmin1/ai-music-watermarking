@@ -1,0 +1,23 @@
+{
+  "provider_id": "openai",
+  "display_name": "OpenAI",
+  "aliases": ["openai", "chatgpt", "sora", "codex"],
+  "products": ["ChatGPT", "OpenAI API", "Sora"],
+  "supported_media": ["audio/wav", "audio/mpeg", "audio/aac", "audio/flac", "audio/ogg", "audio/opus", "audio/pcm"],
+  "signals": ["official_api", "synthid", "c2pa"],
+  "c2pa_issuers": ["OpenAI", "OpenAI OpCo, LLC"],
+  "official_verification": {
+    "adapter": "openai",
+    "status": "available",
+    "env_url": "AUDIOMARK_OPENAI_VERIFY_URL",
+    "env_key": "OPENAI_API_KEY",
+    "default_url": "https://api.openai.com/v1/content_provenance_checks",
+    "auth": "bearer"
+  },
+  "confidence_policy": {
+    "official_verified": 98,
+    "trusted_c2pa": 95,
+    "metadata_hint": 20
+  },
+  "parser_adapter": "openai_content_provenance"
+}

@@ -1,0 +1,22 @@
+{
+  "provider_id": "suno",
+  "display_name": "Suno",
+  "aliases": ["suno", "suno labs"],
+  "products": ["Suno"],
+  "supported_media": ["audio/wav", "audio/mpeg", "audio/aac", "audio/flac"],
+  "signals": ["c2pa", "official_portal"],
+  "c2pa_issuers": ["Suno", "Suno, Inc.", "Suno Inc"],
+  "official_verification": {
+    "adapter": "c2pa_local",
+    "status": "local",
+    "env_url": "AUDIOMARK_SUNO_VERIFY_URL",
+    "portal": "https://suno.com/safety",
+    "auth": "none"
+  },
+  "confidence_policy": {
+    "official_verified": 97,
+    "trusted_c2pa": 96,
+    "metadata_hint": 20
+  },
+  "parser_adapter": "suno_content_credentials"
+}

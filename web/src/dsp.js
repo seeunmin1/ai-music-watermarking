@@ -120,7 +120,26 @@ function extractJsonNear(bytes, idx) {
   }
   return null;
 }
-export const VENDOR_LABELS = { suno: "Suno", elevenlabs: "ElevenLabs", openai: "OpenAI", synthid: "Google SynthID", audioseal: "Meta AudioSeal", udio: "Udio", lyria: "Google Lyria" };
+export const VENDOR_LABELS = { suno: "Suno", elevenlabs: "ElevenLabs", openai: "OpenAI", chatgpt: "ChatGPT", sora: "Sora", synthid: "Google SynthID", google: "Google", gemini: "Google Gemini", audioseal: "Meta AudioSeal", udio: "Udio", lyria: "Google Lyria", "stability ai": "Stability AI", "stable audio": "Stable Audio", meta: "Meta", musicgen: "Meta MusicGen", adobe: "Adobe", firefly: "Adobe Firefly", microsoft: "Microsoft", copilot: "Microsoft Copilot", "azure ai": "Azure AI", bytedance: "ByteDance", tiktok: "TikTok", "resemble ai": "Resemble AI", playht: "PlayHT", "play.ht": "PlayHT", murf: "Murf", lovo: "Lovo", genny: "Lovo Genny", wellsaid: "WellSaid", speechify: "Speechify", descript: "Descript", overdub: "Descript Overdub", runway: "Runway", runwayml: "Runway" };
+
+function isTokenByte(value) {
+  const lower = value | 32;
+  return (value >= 48 && value <= 57) || (lower >= 97 && lower <= 122);
+}
+
+function hasStandaloneAscii(bytes, text, from, to) {
+  let i = from;
+  while (i < to) {
+    const idx = findAscii(bytes, text, i, to);
+    if (idx < 0) return false;
+    const beforeOk = idx === 0 || !isTokenByte(bytes[idx - 1]);
+    const after = idx + text.length;
+    const afterOk = after >= bytes.length || !isTokenByte(bytes[after]);
+    if (beforeOk && afterOk) return true;
+    i = idx + 1;
+  }
+  return false;
+}
 
 export function scanMetadata(bytes) {
   const res = { id3: false, jumbf: false, manifest: null, vendorHints: [], fields: null };
@@ -142,13 +161,7 @@ export function scanMetadata(bytes) {
     }
     for (const v of Object.keys(VENDOR_LABELS)) {
       if (res.vendorHints.includes(v)) continue;
-      let i = a;
-      while (i < b) {
-        const idx = findAscii(bytes, v, i, b);
-        if (idx < 0) break;
-        if (v !== "udio" || idx === 0 || (bytes[idx - 1] | 32) !== 97) { res.vendorHints.push(v); break; }
-        i = idx + 1;
-      }
+      if (hasStandaloneAscii(bytes, v, a, b)) res.vendorHints.push(v);
     }
   }
   if (res.manifest) {
@@ -159,6 +172,7 @@ export function scanMetadata(bytes) {
       system: stat.system ? `${stat.system} v${stat.system_version || "?"}` : m.claim_generator || "—",
       created: stat.created || null,
       uid: stat.unique_id || null,
+      unique_id: stat.unique_id || null,
     };
   }
   return res;

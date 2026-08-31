@@ -1,0 +1,4 @@
+.uv-cache/
+__pycache__/
+*.pyc
+web/dist/

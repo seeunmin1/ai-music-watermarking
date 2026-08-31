@@ -1,0 +1,23 @@
+{
+  "provider_id": "elevenlabs",
+  "display_name": "ElevenLabs",
+  "aliases": ["elevenlabs", "eleven labs"],
+  "products": ["ElevenLabs Text to Speech", "ElevenLabs Voice"],
+  "supported_media": ["audio/wav", "audio/mpeg", "audio/aac", "audio/flac", "audio/ogg"],
+  "signals": ["official_portal", "provider_watermark", "classifier"],
+  "c2pa_issuers": ["ElevenLabs", "Eleven Labs"],
+  "official_verification": {
+    "adapter": "manual",
+    "status": "manual",
+    "env_url": "AUDIOMARK_ELEVENLABS_VERIFY_URL",
+    "env_key": "AUDIOMARK_ELEVENLABS_VERIFY_KEY",
+    "portal": "https://elevenlabs.io/docs/eleven-creative/audio-tools/audio-detector",
+    "auth": "account"
+  },
+  "confidence_policy": {
+    "official_verified": 98,
+    "trusted_c2pa": 94,
+    "metadata_hint": 20
+  },
+  "parser_adapter": "elevenlabs_audio_detector"
+}

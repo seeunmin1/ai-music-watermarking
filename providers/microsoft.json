@@ -1,0 +1,21 @@
+{
+  "provider_id": "microsoft",
+  "display_name": "Microsoft",
+  "aliases": ["microsoft", "copilot", "azure ai"],
+  "products": ["Microsoft Copilot", "Azure AI"],
+  "supported_media": ["audio/wav", "audio/mpeg", "audio/aac", "audio/flac"],
+  "signals": ["c2pa", "metadata_hint", "classifier"],
+  "c2pa_issuers": ["Microsoft", "Microsoft Corporation"],
+  "official_verification": {
+    "adapter": "manual",
+    "status": "manual",
+    "env_url": "AUDIOMARK_MICROSOFT_VERIFY_URL",
+    "auth": "account"
+  },
+  "confidence_policy": {
+    "official_verified": 98,
+    "trusted_c2pa": 95,
+    "metadata_hint": 20
+  },
+  "parser_adapter": "generic"
+}

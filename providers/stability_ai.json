@@ -1,0 +1,21 @@
+{
+  "provider_id": "stability_ai",
+  "display_name": "Stability AI",
+  "aliases": ["stability ai", "stable audio", "stability"],
+  "products": ["Stable Audio"],
+  "supported_media": ["audio/wav", "audio/mpeg", "audio/aac", "audio/flac"],
+  "signals": ["metadata_hint", "classifier"],
+  "c2pa_issuers": ["Stability AI", "Stable Audio"],
+  "official_verification": {
+    "adapter": "manual",
+    "status": "not_available",
+    "env_url": "AUDIOMARK_STABILITY_AI_VERIFY_URL",
+    "auth": "unknown"
+  },
+  "confidence_policy": {
+    "official_verified": 98,
+    "trusted_c2pa": 94,
+    "metadata_hint": 20
+  },
+  "parser_adapter": "generic"
+}

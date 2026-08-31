@@ -1,0 +1,45 @@
+{
+  "@context": "https://c2pa.org/manifest (illustrative test fixture)",
+  "claim_generator": "Google SynthID test fixture for Audiomark",
+  "title": "gemini_payload_fixture.wav",
+  "assertions": [
+    {
+      "label": "c2pa.actions",
+      "data": {
+        "actions": [
+          {
+            "action": "c2pa.created",
+            "digitalSourceType": "trainedAlgorithmicMedia"
+          }
+        ]
+      }
+    },
+    {
+      "label": "ai.statutory_disclosure.ca_sb942",
+      "data": {
+        "provider": "Google",
+        "system": "Gemini",
+        "system_version": "test-fixture",
+        "created": "2026-08-31T22:06:52.517Z",
+        "unique_id": "gemini-test-1788214012518"
+      }
+    },
+    {
+      "label": "google.synthid.audio",
+      "data": {
+        "issuer": "google_synthid",
+        "provider": "Google",
+        "system": "Gemini or Google AI",
+        "note": "Synthetic local test payload, not an official Google SynthID watermark"
+      }
+    }
+  ],
+  "content_bindings": {
+    "alg": "sha256",
+    "source_asset": "local-generated-tone"
+  },
+  "signature": {
+    "alg": "ed25519 (simulated test fixture)",
+    "value": "google_synthid_fixture_only"
+  }
+}

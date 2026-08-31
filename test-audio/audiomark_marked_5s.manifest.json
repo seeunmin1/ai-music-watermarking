@@ -1,0 +1,45 @@
+{
+  "@context": "https://c2pa.org/manifest (illustrative)",
+  "claim_generator": "AudiomarkAI/test-fixture-js",
+  "title": "audiomark_source_5s.wav",
+  "assertions": [
+    {
+      "label": "c2pa.actions",
+      "data": {
+        "actions": [
+          {
+            "action": "c2pa.created",
+            "digitalSourceType": "trainedAlgorithmicMedia"
+          }
+        ]
+      }
+    },
+    {
+      "label": "ai.statutory_disclosure.ca_sb942",
+      "data": {
+        "provider": "Audiomark Test Fixtures",
+        "system": "SyntheticChord",
+        "system_version": "1.0",
+        "created": "2026-08-18T07:17:13.382Z",
+        "unique_id": "test-b516f65aa57f19c6cf9d5d35"
+      }
+    },
+    {
+      "label": "audiomark.latent_watermark",
+      "data": {
+        "scheme": "audiomark-ss/v1",
+        "record_id": "4d4152",
+        "bit_length": 44,
+        "redundancy": 2
+      }
+    }
+  ],
+  "content_bindings": {
+    "alg": "sha256",
+    "source_asset": "3046bdbaf09bfff010503770463c62e10cc34ab6dff6aa8fe8d81bb0fa3d6505"
+  },
+  "signature": {
+    "alg": "ed25519 (simulated in MVP)",
+    "value": "am1_testb516f65aa57f19c6cf9d5d35"
+  }
+}
