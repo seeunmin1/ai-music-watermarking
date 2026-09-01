@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import mimetypes
 import os
+import re
 import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -54,6 +56,8 @@ class DetectionHandler(BaseHTTPRequestHandler):
                 "metadata": {k: v for k, v in result["metadata"].items() if k != "manifest"},
                 "provenance": result["provenance"],
                 "ai_detected": result["ai_detected"],
+                "audio_decode": result["audio_decode"],
+                "classifier": result["classifier"],
             })
         except Exception as exc:
             self._send_json(400, {"error": str(exc)})
@@ -73,15 +77,15 @@ class DetectionHandler(BaseHTTPRequestHandler):
             return Path(data["path"]).resolve()
 
         body = self.rfile.read(length)
-        file_bytes, filename = _extract_multipart_file(body, content_type)
-        suffix = Path(filename or "upload.wav").suffix or ".wav"
+        file_bytes, filename, media_type = _extract_multipart_file(body, content_type)
+        suffix = Path(filename or "").suffix or mimetypes.guess_extension(media_type or "") or ".wav"
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
         with tmp:
             tmp.write(file_bytes)
         return Path(tmp.name)
 
 
-def _extract_multipart_file(body: bytes, content_type: str) -> tuple[bytes, str]:
+def _extract_multipart_file(body: bytes, content_type: str) -> tuple[bytes, str, str]:
     marker = "boundary="
     if marker not in content_type:
         raise ValueError("multipart boundary missing")
@@ -93,12 +97,12 @@ def _extract_multipart_file(body: bytes, content_type: str) -> tuple[bytes, str]
         if not payload:
             continue
         payload = payload.rsplit(b"\r\n", 1)[0]
-        filename = "upload.wav"
-        for piece in header.decode("utf-8", errors="ignore").split(";"):
-            piece = piece.strip()
-            if piece.startswith("filename="):
-                filename = piece.split("=", 1)[1].strip().strip('"')
-        return payload, filename
+        header_text = header.decode("utf-8", errors="ignore")
+        filename_match = re.search(r'filename="([^"]*)"', header_text)
+        media_match = re.search(r"Content-Type:\s*([^\r\n;]+)", header_text, re.IGNORECASE)
+        filename = filename_match.group(1) if filename_match else "upload.wav"
+        media_type = media_match.group(1).strip() if media_match else ""
+        return payload, filename, media_type
     raise ValueError("multipart field 'file' missing")
 
 

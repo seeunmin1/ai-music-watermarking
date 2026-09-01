@@ -37,6 +37,8 @@ def _claim_level(status: str) -> str:
         return "verified"
     if status == "probable":
         return "probable"
+    if status == "detected":
+        return "detected"
     return "unknown"
 
 
@@ -47,15 +49,15 @@ def _manifest_signal(meta: dict[str, Any]) -> dict[str, Any] | None:
     return {
         "id": "c2pa_manifest",
         "label": PROFILES["c2pa_manifest"]["label"],
-        "category": "Verified provenance",
-        "status": "verified",
-        "claimLevel": "verified",
-        "confidence": 92,
+        "category": "C2PA detected",
+        "status": "detected",
+        "claimLevel": "detected",
+        "confidence": 35,
         "provider": fields.get("provider"),
         "system": fields.get("system"),
         "contentId": fields.get("uid") or fields.get("unique_id"),
         "createdAt": fields.get("created"),
-        "detail": "Embedded C2PA-style disclosure manifest parsed",
+        "detail": "Embedded C2PA-style disclosure manifest parsed; signature trust must be validated by c2patool or an official adapter",
     }
 
 
@@ -79,15 +81,15 @@ def _provider_payload_signals(meta: dict[str, Any]) -> list[dict[str, Any]]:
             out.append({
                 "id": signal_id,
                 "label": PROFILES.get(signal_id, {}).get("label", f"{provider} provider payload"),
-                "category": "Verified provenance",
-                "status": "verified",
-                "claimLevel": "verified",
-                "confidence": profile.get("confidence_policy", {}).get("trusted_c2pa", 94),
+                "category": "C2PA detected",
+                "status": "detected",
+                "claimLevel": "detected",
+                "confidence": profile.get("confidence_policy", {}).get("metadata_hint", 20),
                 "provider": provider,
                 "system": fields.get("system") or (profile.get("products") or [provider])[0],
                 "contentId": fields.get("uid") or fields.get("unique_id"),
                 "createdAt": fields.get("created"),
-                "detail": f"{provider} provenance payload recovered from metadata",
+                "detail": f"{provider} C2PA-related payload recovered from metadata; trusted signature validation is required for verification",
                 "evidence": {"profile": profile["provider_id"], "source": "provider_catalog"},
             })
         elif hint_only:
@@ -113,15 +115,17 @@ def _official_result_signals(official_results: list[dict[str, Any]]) -> list[dic
     for result in official_results or []:
         provider = result.get("provider")
         verified = bool(result.get("verified"))
+        status = "verified" if verified else result.get("status", "not_configured")
         signal_id = result.get("id") or f"official:{str(provider or 'unknown').lower()}"
+        c2pa_detected = signal_id.startswith("c2pa:") and status == "detected"
         out.append({
             "id": signal_id,
             "label": result.get("label") or f"{provider} official check",
-            "category": "Verified provenance" if verified else "Unsupported/unknown",
-            "status": "verified" if verified else result.get("status", "not_configured"),
-            "claimLevel": "verified" if verified else "unknown",
+            "category": "Verified provenance" if verified else "C2PA detected" if c2pa_detected else "Unsupported/unknown",
+            "status": status,
+            "claimLevel": "verified" if verified else "detected" if c2pa_detected else "unknown",
             "confidence": result.get("confidence", 98 if verified else 0),
-            "provider": provider if verified else None,
+            "provider": provider if (verified or c2pa_detected) else None,
             "system": result.get("system"),
             "contentId": result.get("contentId"),
             "createdAt": result.get("createdAt"),
@@ -230,6 +234,12 @@ def _pick_primary(signals: list[dict[str, Any]]) -> dict[str, Any] | None:
             if signal["id"] == wanted and signal["status"] == "verified":
                 return signal
     for signal in signals:
+        if signal["status"] == "detected" and signal["id"].startswith("c2pa:"):
+            return signal
+    for signal in signals:
+        if signal["status"] == "detected" and signal["id"] == "c2pa_manifest":
+            return signal
+    for signal in signals:
         if signal["status"] == "probable":
             return signal
     return None
@@ -250,6 +260,65 @@ def _official_check_status(signals: list[dict[str, Any]], official_results: list
         "configuredProviders": [r.get("provider") for r in configured if r.get("provider")],
         "checkedProviders": [r.get("provider") for r in official_only if r.get("provider")],
     }
+
+
+def _best_provider_signal(signals: list[dict[str, Any]]) -> dict[str, Any] | None:
+    for status in ("verified", "detected", "probable", "hint"):
+        for signal in signals:
+            if signal.get("provider") and signal["status"] == status:
+                return signal
+    return None
+
+
+def _provider_verification_status(
+    provider_signal: dict[str, Any] | None,
+    official_status: dict[str, Any],
+) -> str:
+    if not provider_signal:
+        return "unknown"
+    if provider_signal["status"] == "verified":
+        return "verified"
+    if provider_signal["status"] == "detected":
+        return "not_verified"
+    if official_status["status"] == "not_configured":
+        return "not_configured"
+    if provider_signal["status"] in {"probable", "hint"}:
+        return "not_verified"
+    return "unknown"
+
+
+def _display_copy(
+    generation_claim_level: str,
+    provider_signal: dict[str, Any] | None,
+    provider_verification_status: str,
+    verdict: str,
+) -> tuple[str, str]:
+    provider = provider_signal.get("provider") if provider_signal else None
+    system = provider_signal.get("system") if provider_signal else None
+    provider_name = system if system and system != "Unknown" else provider
+
+    if generation_claim_level == "verified":
+        return "Verified AI-generated", (
+            f"Verified provider: {provider_name}" if provider_name else "Verified provenance payload recovered"
+        )
+    if generation_claim_level == "probable":
+        status = (
+            "provider not verified"
+            if provider_verification_status != "verified"
+            else "verified provider"
+        )
+        return "Likely AI-generated", (
+            f"Likely source: {provider_name}; {status}" if provider_name else "Provider not resolved"
+        )
+    if generation_claim_level == "detected":
+        return "C2PA manifest found", (
+            f"Possible provider: {provider_name}; signer not trusted" if provider_name else "Signer not trusted"
+        )
+    if verdict == "unknown_with_hints":
+        return "Unknown with metadata hints", (
+            f"Metadata hint: {provider_name}; provider not verified" if provider_name else "No verified payload recovered"
+        )
+    return "Unmarked / unknown", "No verified or probable generation signals recovered"
 
 
 def analyze_provenance(
@@ -276,6 +345,8 @@ def analyze_provenance(
 
     if claim_level == "verified":
         verdict = "ai_generated"
+    elif claim_level == "detected":
+        verdict = "c2pa_detected_untrusted"
     elif claim_level == "probable":
         verdict = "probably_ai_generated"
     elif has_hints:
@@ -285,7 +356,7 @@ def analyze_provenance(
 
     candidates = []
     for signal in signals:
-        if signal.get("provider") and signal["status"] in {"verified", "probable", "hint"}:
+        if signal.get("provider") and signal["status"] in {"verified", "detected", "probable", "hint"}:
             candidates.append({
                 "provider": signal["provider"],
                 "system": signal.get("system"),
@@ -295,9 +366,27 @@ def analyze_provenance(
                 "evidence": signal.get("evidence"),
             })
 
+    official_status = _official_check_status(signals, official_results or [])
+    provider_signal = _best_provider_signal(signals)
+    provider_claim_level = provider_signal.get("claimLevel", "unknown") if provider_signal else "unknown"
+    provider_verification_status = _provider_verification_status(provider_signal, official_status)
+    generation_claim_level = claim_level
+    display_title, display_subtitle = _display_copy(
+        generation_claim_level,
+        provider_signal,
+        provider_verification_status,
+        verdict,
+    )
+
     limitations = []
     if not any(s.get("provider") == "Google" and s["status"] == "verified" for s in signals):
-        limitations.append("Google/Gemini is only verified when a trusted SynthID, manifest payload, or official adapter result is recovered.")
+        limitations.append("Google/Gemini is only verified when a trusted SynthID/C2PA signature or official adapter result is recovered.")
+    if (
+        provider_signal
+        and provider_signal["status"] == "probable"
+        and str(provider_signal.get("provider", "")).lower() == "google"
+    ):
+        limitations.append("Gemini attribution came from local analysis. Verified Gemini requires a trusted SynthID, C2PA payload, or official Google verification result.")
     limitations.append("Classifier attribution is probable only and must not be treated as statutory provenance.")
     limitations.append("The WMAR clustered-token detector requires the experimental Python backend and model/codebook assets.")
     if not primary and has_hints:
@@ -306,15 +395,24 @@ def analyze_provenance(
     return {
         "verdict": verdict,
         "claimLevel": claim_level,
+        "generationClaimLevel": generation_claim_level,
+        "providerClaimLevel": provider_claim_level,
+        "providerVerificationStatus": provider_verification_status,
+        "displayTitle": display_title,
+        "displaySubtitle": display_subtitle,
         "provider": primary.get("provider") if primary else None,
+        "attributedProvider": provider_signal.get("provider") if provider_signal else None,
+        "attributedSystem": provider_signal.get("system") if provider_signal else None,
         "providerCandidates": candidates,
         "system": primary.get("system") if primary else None,
         "contentId": primary.get("contentId") if primary else None,
         "createdAt": primary.get("createdAt") if primary else None,
         "signals": signals,
         "confidence": round(float(primary.get("confidence", 0))) if primary else 0,
+        "attributionConfidence": round(float(provider_signal.get("confidence", 0))) if provider_signal else 0,
         "resolvedVia": primary.get("label") if primary else None,
-        "officialCheckStatus": _official_check_status(signals, official_results or []),
+        "attributionResolvedVia": provider_signal.get("label") if provider_signal else None,
+        "officialCheckStatus": official_status,
         "limitations": limitations,
         "record": rec,
     }

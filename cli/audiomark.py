@@ -188,18 +188,73 @@ def read_wav(path: Path):
     return data, rate, raw
 
 
-def try_read_wav(path: Path):
-    """Best-effort WAV reader used by detection.
+def _decode_with_miniaudio(path: Path):
+    try:
+        import miniaudio  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError(
+            "Optional MP3/general audio decoder is not installed. "
+            "Install cli requirements to enable MP3 feature classification."
+        ) from exc
 
-    Non-WAV uploads can still be checked for metadata, C2PA payloads, and
-    official-provider provenance. The latent Audiomark DSSS detector remains a
-    PCM WAV lane until a general audio decoder is added.
+    decoded = miniaudio.decode_file(
+        str(path),
+        output_format=miniaudio.SampleFormat.SIGNED16,
+    )
+    channels = int(getattr(decoded, "nchannels", 1) or 1)
+    rate = int(getattr(decoded, "sample_rate", 0) or 0)
+    if rate <= 0:
+        raise ValueError("Decoded audio did not include a valid sample rate.")
+    pcm = np.asarray(decoded.samples, dtype=np.int16).astype(np.float64) / 32768.0
+    if channels > 1:
+        pcm = pcm.reshape(-1, channels).mean(axis=1)
+    return pcm, rate, {
+        "status": "decoded",
+        "codec": path.suffix.lower().lstrip(".") or "unknown",
+        "decoder": "miniaudio",
+        "sample_rate": rate,
+        "channels": channels,
+        "duration": len(pcm) / rate,
+        "detail": "Audio decoded for watermark detection and local attribution.",
+    }
+
+
+def try_read_audio(path: Path):
+    """Best-effort audio reader used by detection.
+
+    WAV files use the stdlib wave path. Other formats use the optional
+    miniaudio dependency when available. Metadata and official-provider checks
+    still run when waveform decoding is unavailable.
     """
     try:
         samples, rate, raw = read_wav(path)
-        return samples, rate, raw, None
+        return samples, rate, raw, None, {
+            "status": "decoded",
+            "codec": "wav",
+            "decoder": "wave",
+            "sample_rate": rate,
+            "channels": 1,
+            "duration": len(samples) / rate if rate else None,
+            "detail": "PCM WAV decoded for watermark detection and local attribution.",
+        }
     except (wave.Error, EOFError, ValueError) as exc:
-        return None, None, path.read_bytes(), str(exc)
+        raw = path.read_bytes()
+        wav_error = str(exc)
+
+    try:
+        samples, rate, info = _decode_with_miniaudio(path)
+        return samples, rate, raw, None, info
+    except Exception as exc:
+        return None, None, raw, str(exc), {
+            "status": "unsupported",
+            "codec": path.suffix.lower().lstrip(".") or "unknown",
+            "decoder": "miniaudio",
+            "sample_rate": None,
+            "channels": None,
+            "duration": None,
+            "detail": f"Waveform decoding skipped: {exc}",
+            "wav_error": wav_error,
+        }
 
 
 def write_wav(path: Path, samples: np.ndarray, rate: int,
@@ -385,7 +440,7 @@ def op_embed(in_path: Path, out_path: Path, provider: str, system: str,
 
 
 def op_detect(path: Path) -> dict:
-    samples, rate, raw, decode_error = try_read_wav(path)
+    samples, rate, raw, decode_error, audio_decode = try_read_audio(path)
     det = detect_watermark(samples) if samples is not None else Detection(False, 0, 0.0, 0.0, 0)
     meta = scan_metadata(raw)
 
@@ -397,13 +452,13 @@ def op_detect(path: Path) -> dict:
         else {
             "status": "unsupported",
             "candidates": [],
-            "detail": f"Local audio classifier skipped because this file could not be decoded as PCM WAV: {decode_error}",
+            "detail": f"Local audio classifier skipped because this file could not be decoded: {decode_error}",
         }
     )
     prov = analyze_provenance(det, meta, registry, official_results, classifier_result)
     if samples is None:
         prov["limitations"].append(
-            "Latent Audiomark watermark detection and local attribution currently require PCM WAV input; MP3 uploads still run metadata, C2PA, and official-provider checks."
+            "Latent Audiomark watermark detection and local attribution require decoded waveform audio; this upload still ran metadata, C2PA, and official-provider checks."
         )
     ai_detected = prov["verdict"] == "ai_generated"
 
@@ -414,7 +469,8 @@ def op_detect(path: Path) -> dict:
               f"{'UNKNOWN WITH HINTS' if prov['verdict'] == 'unknown_with_hints' else 'UNMARKED'} "
               f"verdict for '{path.name}' (z={det.z:.1f}, no verified payload)")
     return {"detection": det, "metadata": meta, "provenance": prov,
-            "ai_detected": ai_detected}
+            "ai_detected": ai_detected, "audio_decode": audio_decode,
+            "classifier": classifier_result}
 
     rec = next((r for r in registry
                 if int(r["id_hex"], 16) == det.record_id), None) if det.found else None
@@ -472,7 +528,8 @@ def _print_detect(res: dict, name: str):
     prov = res["provenance"]
     bar = "-" * 62
     verdict = "AI-GENERATED" if res["ai_detected"] else (
-        "PROBABLY AI-GENERATED" if prov["claimLevel"] == "probable"
+        "C2PA MANIFEST FOUND / SIGNER NOT TRUSTED" if prov["generationClaimLevel"] == "detected"
+        else "PROBABLY AI-GENERATED" if prov["claimLevel"] == "probable"
         else "UNKNOWN WITH METADATA HINTS" if prov["verdict"] == "unknown_with_hints"
         else "HUMAN CREATED / UNMARKED"
     )
@@ -494,8 +551,10 @@ def _print_detect(res: dict, name: str):
     print("  WMAR detector    : experimental adapter hook")
     print(bar)
     if prov["provider"]:
-        print("  PROVIDER IDENTIFICATION" if prov["claimLevel"] == "verified" else "  PROVIDER ATTRIBUTION")
-        print(f"    Claim level         : {prov['claimLevel']}")
+        print("  PROVIDER IDENTIFICATION" if prov["providerVerificationStatus"] == "verified" else "  PROVIDER ATTRIBUTION")
+        print(f"    Generation claim    : {prov['generationClaimLevel']}")
+        print(f"    Provider claim      : {prov['providerClaimLevel']}")
+        print(f"    Provider verified   : {prov['providerVerificationStatus']}")
         print(f"    Provider / Platform : {prov['provider']}")
         print(f"    System version      : {prov['system'] or '-'}")
         print(f"    Timestamp           : {prov.get('createdAt') or '-'}")
@@ -603,6 +662,8 @@ def main(argv=None):
                 "metadata": {k: v for k, v in res["metadata"].items() if k != "manifest"},
                 "provenance": res["provenance"],
                 "ai_detected": res["ai_detected"],
+                "audio_decode": res["audio_decode"],
+                "classifier": res["classifier"],
             }, indent=2))
         else:
             _print_detect(res, a.input.name)

@@ -2,7 +2,8 @@
 
 Provider checks are loaded from providers/*.json. Adapters never manufacture a
 verified result: a profile is verified only through a successful official API
-response or local C2PA issuer match.
+response, trusted C2PA signature validation, or a local Audiomark registry
+match.
 """
 
 from __future__ import annotations
@@ -146,8 +147,8 @@ def _run_remote_placeholder(profile: dict[str, Any]) -> dict[str, Any]:
 
 def run_official_checks(path: str, meta: dict[str, Any], profiles: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     profiles = profiles or load_provider_profiles()
-    results = verify_c2pa_manifest(meta, profiles)
-    matched_ids = {r.get("evidence", {}).get("profile") for r in results}
+    results = verify_c2pa_manifest(meta, profiles, path)
+    matched_ids = {r.get("evidence", {}).get("profile") for r in results if r.get("verified")}
 
     for profile in profiles:
         if profile["provider_id"] in matched_ids:

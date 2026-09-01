@@ -17,6 +17,7 @@ function collectManifestText(manifest, fields) {
 function claimLevel(status) {
   if (status === "verified") return "verified";
   if (status === "probable") return "probable";
+  if (status === "detected") return "detected";
   return "unknown";
 }
 
@@ -26,15 +27,15 @@ function manifestSignal(meta) {
   return {
     id: "c2pa_manifest",
     label: PROFILES.c2pa_manifest.label,
-    category: "Verified provenance",
-    status: "verified",
-    claimLevel: "verified",
-    confidence: 92,
+    category: "C2PA detected",
+    status: "detected",
+    claimLevel: "detected",
+    confidence: 35,
     provider: fields.provider || null,
     system: fields.system || null,
     contentId: fields.uid || fields.unique_id || null,
     createdAt: fields.created || null,
-    detail: "Embedded C2PA-style disclosure manifest parsed",
+    detail: "Embedded C2PA-style disclosure manifest parsed; signature trust must be validated by c2patool or an official adapter",
   };
 }
 
@@ -57,15 +58,15 @@ function providerPayloadSignals(meta) {
       out.push({
         id: signalId,
         label: profile.label,
-        category: "Verified provenance",
-        status: "verified",
-        claimLevel: "verified",
-        confidence: ["google_synthid", "openai_synthid"].includes(signalId) ? 95 : 93,
+        category: "C2PA detected",
+        status: "detected",
+        claimLevel: "detected",
+        confidence: 20,
         provider,
         system: fields.system || profile.system,
         contentId: fields.uid || fields.unique_id || null,
         createdAt: fields.created || null,
-        detail: `${provider} provenance payload recovered from metadata`,
+        detail: `${provider} C2PA-related payload recovered from metadata; trusted signature validation is required for verification`,
       });
     } else if (hintOnly) {
       out.push({
@@ -91,14 +92,17 @@ function officialResultSignals(officialResults = []) {
   return officialResults.map((result) => {
     const provider = result.provider;
     const verified = !!result.verified;
+    const status = verified ? "verified" : result.status || "not_configured";
+    const id = result.id || `official:${String(provider || "unknown").toLowerCase()}`;
+    const c2paDetected = id.startsWith("c2pa:") && status === "detected";
     return {
-      id: result.id || `official:${String(provider || "unknown").toLowerCase()}`,
+      id,
       label: result.label || `${provider} official check`,
-      category: verified ? "Verified provenance" : "Unsupported/unknown",
-      status: verified ? "verified" : result.status || "not_configured",
-      claimLevel: verified ? "verified" : "unknown",
+      category: verified ? "Verified provenance" : c2paDetected ? "C2PA detected" : "Unsupported/unknown",
+      status,
+      claimLevel: verified ? "verified" : c2paDetected ? "detected" : "unknown",
       confidence: result.confidence || (verified ? 98 : 0),
-      provider: verified ? provider : null,
+      provider: verified || c2paDetected ? provider : null,
       system: result.system || null,
       contentId: result.contentId || null,
       createdAt: result.createdAt || null,
@@ -189,7 +193,8 @@ function pickPrimary(signals) {
   return signals.find((s) => s.status === "verified" && s.id.startsWith("official:"))
     || PROVIDER_SIGNAL_IDS.map((id) => signals.find((s) => s.id === id && s.status === "verified")).find(Boolean)
     || signals.find((s) => s.id === "audiomark_ss_v1" && s.status === "verified")
-    || signals.find((s) => s.id === "c2pa_manifest" && s.status === "verified")
+    || signals.find((s) => s.status === "detected" && s.id.startsWith("c2pa:"))
+    || signals.find((s) => s.status === "detected" && s.id === "c2pa_manifest")
     || signals.find((s) => s.status === "probable")
     || null;
 }
@@ -201,6 +206,58 @@ function officialCheckStatus(signals, officialResults = []) {
     status: verified.length ? "verified" : configured.length ? "checked_no_match" : "not_configured",
     configuredProviders: configured.map((r) => r.provider).filter(Boolean),
     checkedProviders: officialResults.map((r) => r.provider).filter(Boolean),
+  };
+}
+
+function bestProviderSignal(signals) {
+  for (const status of ["verified", "detected", "probable", "hint"]) {
+    const signal = signals.find((s) => s.provider && s.status === status);
+    if (signal) return signal;
+  }
+  return null;
+}
+
+function providerVerificationStatus(providerSignal, officialStatus) {
+  if (!providerSignal) return "unknown";
+  if (providerSignal.status === "verified") return "verified";
+  if (providerSignal.status === "detected" || providerSignal.status === "probable" || providerSignal.status === "hint") {
+    return officialStatus.status === "not_configured" ? "not_configured" : "not_verified";
+  }
+  return "unknown";
+}
+
+function displayCopy(generationClaimLevel, providerSignal, verificationStatus, verdict) {
+  const provider = providerSignal?.provider || null;
+  const system = providerSignal?.system || null;
+  const providerName = system && system !== "Unknown" ? system : provider;
+  if (generationClaimLevel === "verified") {
+    return {
+      displayTitle: "Verified AI-generated",
+      displaySubtitle: providerName ? `Verified provider: ${providerName}` : "Verified provenance payload recovered",
+    };
+  }
+  if (generationClaimLevel === "detected") {
+    return {
+      displayTitle: "C2PA manifest found",
+      displaySubtitle: providerName ? `Possible provider: ${providerName}; signer not trusted` : "Signer not trusted",
+    };
+  }
+  if (generationClaimLevel === "probable") {
+    const status = verificationStatus === "verified" ? "verified provider" : "provider not verified";
+    return {
+      displayTitle: "Likely AI-generated",
+      displaySubtitle: providerName ? `Likely source: ${providerName}; ${status}` : "Provider not resolved",
+    };
+  }
+  if (verdict === "unknown_with_hints") {
+    return {
+      displayTitle: "Unknown with metadata hints",
+      displaySubtitle: providerName ? `Metadata hint: ${providerName}; provider not verified` : "No verified payload recovered",
+    };
+  }
+  return {
+    displayTitle: "Unmarked / unknown",
+    displaySubtitle: "No verified or probable generation signals recovered",
   };
 }
 
@@ -221,14 +278,16 @@ export function analyzeProvenance({ wm, meta, registry, officialResults = [], cl
   const level = primary ? claimLevel(primary.status) : "unknown";
   const verdict = level === "verified"
     ? "ai_generated"
-    : level === "probable"
-      ? "probably_ai_generated"
-      : hasHints
-        ? "unknown_with_hints"
-        : "unmarked_or_unknown";
+    : level === "detected"
+      ? "c2pa_detected_untrusted"
+      : level === "probable"
+        ? "probably_ai_generated"
+        : hasHints
+          ? "unknown_with_hints"
+          : "unmarked_or_unknown";
 
   const providerCandidates = signals
-    .filter((s) => s.provider && ["verified", "probable", "hint"].includes(s.status))
+    .filter((s) => s.provider && ["verified", "detected", "probable", "hint"].includes(s.status))
     .map((s) => ({
       provider: s.provider,
       system: s.system,
@@ -238,9 +297,17 @@ export function analyzeProvenance({ wm, meta, registry, officialResults = [], cl
       evidence: s.evidence || null,
     }));
 
+  const officialStatus = officialCheckStatus(signals, officialResults);
+  const providerSignal = bestProviderSignal(signals);
+  const providerStatus = providerVerificationStatus(providerSignal, officialStatus);
+  const { displayTitle, displaySubtitle } = displayCopy(level, providerSignal, providerStatus, verdict);
+
   const limitations = [];
   if (!signals.some((s) => s.id === "google_synthid" && s.status === "verified")) {
-    limitations.push("Google/Gemini is only verified when a trusted SynthID, manifest payload, or official adapter result is recovered.");
+    limitations.push("Google/Gemini is only verified when a trusted SynthID/C2PA signature or official adapter result is recovered.");
+  }
+  if (providerSignal?.status === "probable" && String(providerSignal.provider || "").toLowerCase() === "google") {
+    limitations.push("Gemini attribution came from local analysis. Verified Gemini requires a trusted SynthID, C2PA payload, or official Google verification result.");
   }
   limitations.push("Classifier attribution is probable only and must not be treated as statutory provenance.");
   limitations.push("The WMAR clustered-token detector requires the experimental Python backend and model/codebook assets.");
@@ -249,15 +316,24 @@ export function analyzeProvenance({ wm, meta, registry, officialResults = [], cl
   return {
     verdict,
     claimLevel: level,
+    generationClaimLevel: level,
+    providerClaimLevel: providerSignal?.claimLevel || "unknown",
+    providerVerificationStatus: providerStatus,
+    displayTitle,
+    displaySubtitle,
     provider: primary?.provider || null,
+    attributedProvider: providerSignal?.provider || null,
+    attributedSystem: providerSignal?.system || null,
     providerCandidates,
     system: primary?.system || null,
     contentId: primary?.contentId || null,
     createdAt: primary?.createdAt || null,
     signals,
     confidence: primary ? Math.max(1, Math.round(primary.confidence)) : 0,
+    attributionConfidence: providerSignal ? Math.max(1, Math.round(providerSignal.confidence || 0)) : 0,
     resolvedVia: primary?.label || null,
-    officialCheckStatus: officialCheckStatus(signals, officialResults),
+    attributionResolvedVia: providerSignal?.label || null,
+    officialCheckStatus: officialStatus,
     limitations,
     record: rec || null,
   };

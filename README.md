@@ -21,23 +21,24 @@ by one decodes in the other:
   record ID + 8-bit checksum, level-adaptive gain, repeated across the track)
   plus a C2PA-style manifest written into the output WAV as a RIFF `c2pa`
   chunk, bound by SHA-256 hashes.
-- Mode A (Detect): a layered provenance pipeline over embedded C2PA manifests,
-  official-provider adapter results, Google/OpenAI SynthID-style payloads,
-  Suno-style Content Credentials, ElevenLabs/Audiomark watermarks, a local
-  probable-attribution classifier, an experimental WMAR clustered-token
-  adapter, and vendor-name hints. Provider identity is only **verified** when a
-  recoverable payload, registry match, or official adapter result is present;
-  classifier output is labeled **probable** and plain metadata strings are
+- Mode A (Detect): a layered provenance pipeline over trusted C2PA/Content
+  Credentials signatures, official-provider adapter results, provider payloads,
+  Audiomark watermarks, a local probable-attribution classifier, an experimental
+  WMAR clustered-token adapter, and vendor-name hints. Third-party provider
+  identity is only **verified** when a trusted C2PA signature or official
+  adapter result is present; unchecked manifests are labeled **detected**,
+  classifier output is labeled **probable**, and plain metadata strings are
   reported as hints.
 - Instant statutory verdict (AI-Generated vs. Unmarked) with provider /
   system+version / timestamp / unique-ID resolution, backed by a persistent
   registry and audit log.
 
-**Experimental / stubbed (labeled in the UI):** official Google/OpenAI/
-ElevenLabs/Suno verification calls until endpoint credentials are configured,
-WMAR clustered-token detection from `vendor/nograd-audio-wm` until its Python
-ML dependencies/checkpoints are installed, and real Ed25519 signing (the
-manifest signature is simulated).
+**External / experimental (labeled in the UI):** trusted C2PA validation uses
+the external `c2patool` CLI from `contentauth/c2pa-rs` when installed on the
+backend host, official provider API calls require endpoint credentials, WMAR
+clustered-token detection from `vendor/nograd-audio-wm` requires its Python
+ML dependencies/checkpoints, and this app's own demo manifest signing is not a
+production signing service.
 
 This is a demo/MVP for exploring the statutory watermarking workflow — the
 crypto and third-party decoders are not production-grade.
@@ -80,14 +81,36 @@ The web app can call the local backend for official-provider and classifier
 checks when started with `VITE_PROVENANCE_API_URL=http://127.0.0.1:8787`.
 Without that variable, it still runs the lightweight in-browser detector.
 
+### External C2PA verification
+
+Install `c2patool` on the backend host and make it available on `PATH`, or set:
+
+```bash
+export AUDIOMARK_C2PATOOL_PATH=/path/to/c2patool
+```
+
+The backend runs `c2patool <asset>` to read manifests, `c2patool <asset>
+--certs` to inspect signing certificates, and `c2patool <asset> trust` to
+validate signatures. By default it uses the official C2PA trust-list URL from
+the c2pa-rs docs. Override trust inputs with:
+
+```bash
+export AUDIOMARK_C2PA_TRUST_ANCHORS=/path/or/url/to/anchors.pem
+export AUDIOMARK_C2PA_ALLOWED_LIST=/path/or/url/to/allowed-list.pem
+export AUDIOMARK_C2PA_TRUST_CONFIG=/path/or/url/to/store.cfg
+```
+
+If `c2patool` is missing or trust validation fails, matching provider metadata
+is reported as detected/untrusted or hint-only, not verified.
+
 ## Provider catalog
 
 Third-party provider support is driven by JSON profiles in `providers/`.
 Adding a new generative audio provider should start with one profile containing
 aliases, products, supported media, C2PA issuers, official verification status,
 auth requirements, confidence policy, and parser adapter. The backend loads the
-catalog dynamically for official-check status, C2PA issuer matching, and
-metadata hints.
+catalog dynamically for official-check status, trusted C2PA issuer matching,
+and metadata hints.
 
 Official API keys and endpoints stay server-side. Browser scans are lightweight;
 the backend performs official provider checks and probable local attribution.

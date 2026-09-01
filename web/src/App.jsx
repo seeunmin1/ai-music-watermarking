@@ -6,6 +6,40 @@ import { loadState, saveState, buildManifest } from "./persistence.js";
 import { analyzeProvenance, VENDOR_LABELS } from "./provenance.js";
 
 const DETECTION_API_URL = import.meta.env.VITE_PROVENANCE_API_URL || "";
+const EMPTY_WATERMARK = { found: false, recordId: 0, z: 0, confidence: 0, repetitions: 0 };
+
+function normalizeBackendDetection(detection) {
+  if (!detection) return null;
+  return {
+    found: !!detection.found,
+    recordId: Number(detection.recordId ?? detection.record_id ?? 0),
+    z: Number(detection.z ?? 0),
+    confidence: Number(detection.confidence ?? 0),
+    repetitions: Number(detection.repetitions ?? 0),
+  };
+}
+
+function normalizeBackendMetadata(metadata) {
+  if (!metadata) return null;
+  return {
+    id3: !!metadata.id3,
+    jumbf: !!metadata.jumbf,
+    manifest: metadata.manifest || null,
+    fields: metadata.fields || null,
+    vendorHints: metadata.vendorHints || metadata.vendor_hints || [],
+  };
+}
+
+function mergeMetadata(localMeta, backendMeta) {
+  if (!backendMeta) return localMeta;
+  return {
+    id3: localMeta.id3 || backendMeta.id3,
+    jumbf: localMeta.jumbf || backendMeta.jumbf,
+    manifest: localMeta.manifest || backendMeta.manifest,
+    fields: localMeta.fields || backendMeta.fields,
+    vendorHints: Array.from(new Set([...(localMeta.vendorHints || []), ...(backendMeta.vendorHints || [])])),
+  };
+}
 
 /* ================================================================
    AUDIOMARK AI — Compliance Engine MVP
@@ -77,10 +111,24 @@ export default function AudiomarkAI() {
   const [audit, setAudit] = useState([]);
   const [manifestEnabled, setManifestEnabled] = useState(true);
   const [form, setForm] = useState({ provider: "Audiomark Labs", system: "DemoTTS", version: "1.0" });
+  const [backendStatus, setBackendStatus] = useState(DETECTION_API_URL ? "checking" : "browser_only");
 
   useEffect(() => {
     setRegistry(loadState("registry", []));
     setAudit(loadState("audit", []));
+  }, []);
+
+  useEffect(() => {
+    if (!DETECTION_API_URL) return;
+    let cancelled = false;
+    fetch(`${DETECTION_API_URL.replace(/\/$/, "")}/health`)
+      .then((res) => {
+        if (!cancelled) setBackendStatus(res.ok ? "connected" : "unreachable");
+      })
+      .catch(() => {
+        if (!cancelled) setBackendStatus("unreachable");
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const log = useCallback((type, detail) => {
@@ -100,8 +148,26 @@ export default function AudiomarkAI() {
 
   const onDetectFile = async (f) => {
     setDRes(null); setDBusy(true);
-    try { const d = await readFileAll(f); setDFile({ file: f, name: f.name, ...d }); }
-    catch { setDRes({ error: "Could not decode that file as audio." }); }
+    try {
+      const d = await readFileAll(f);
+      setDFile({ file: f, name: f.name, ...d, browserDecodeError: null });
+    } catch (error) {
+      try {
+        const buf = await f.arrayBuffer();
+        setDFile({
+          file: f,
+          name: f.name,
+          bytes: new Uint8Array(buf),
+          samples: null,
+          sampleRate: null,
+          duration: null,
+          hash: await sha256Hex(buf.slice(0)),
+          browserDecodeError: error?.message || "Browser audio preview decode failed.",
+        });
+      } catch {
+        setDRes({ error: "Could not read that audio file." });
+      }
+    }
     setDBusy(false);
   };
 
@@ -110,9 +176,14 @@ export default function AudiomarkAI() {
     setDBusy(true); setDRes(null);
     await new Promise((r) => setTimeout(r, 250)); // let the "Checking..." state read on screen
     try {
-      const wm = detectWatermark(dFile.samples);
-      const meta = scanMetadata(dFile.bytes);
+      let wm = dFile.samples ? detectWatermark(dFile.samples) : EMPTY_WATERMARK;
+      let meta = scanMetadata(dFile.bytes);
       let provenance = analyzeProvenance({ wm, meta, registry });
+      let audioDecode = dFile.samples
+        ? { status: "decoded", codec: "browser", decoder: "Web Audio API", sample_rate: dFile.sampleRate, duration: dFile.duration, detail: "Browser decoded audio for local preview checks." }
+        : { status: "unsupported", codec: "browser", decoder: "Web Audio API", sample_rate: null, duration: null, detail: dFile.browserDecodeError || "Browser audio decode failed." };
+      let classifier = { status: "not_configured", candidates: [], detail: "Backend local attribution was not run." };
+      let backendUsed = false;
       if (DETECTION_API_URL) {
         try {
           const fd = new FormData();
@@ -120,17 +191,26 @@ export default function AudiomarkAI() {
           const backend = await fetch(`${DETECTION_API_URL.replace(/\/$/, "")}/detect`, { method: "POST", body: fd });
           if (backend.ok) {
             const enriched = await backend.json();
+            const backendWm = normalizeBackendDetection(enriched?.detection);
+            const backendMeta = normalizeBackendMetadata(enriched?.metadata);
+            if (backendWm) wm = backendWm;
+            meta = mergeMetadata(meta, backendMeta);
             if (enriched?.provenance) provenance = enriched.provenance;
+            if (enriched?.audio_decode) audioDecode = enriched.audio_decode;
+            if (enriched?.classifier) classifier = enriched.classifier;
+            backendUsed = true;
+            setBackendStatus("connected");
           }
         } catch {
           provenance.limitations = [...provenance.limitations, "Configured backend detection API was unreachable; browser-only checks were used."];
+          setBackendStatus("unreachable");
         }
       }
-      const aiDetected = provenance.claimLevel === "verified";
-      setDRes({ wm, meta, provenance, aiDetected });
-      log("verify", provenance.claimLevel === "verified"
+      const aiDetected = provenance.generationClaimLevel === "verified";
+      setDRes({ wm, meta, provenance, aiDetected, audioDecode, classifier, backendUsed });
+      log("verify", provenance.generationClaimLevel === "verified"
         ? `AI-GENERATED verdict for "${dFile.name}" resolved via ${provenance.resolvedVia}`
-        : `${provenance.claimLevel === "probable" ? "PROBABLY AI-GENERATED" : provenance.verdict === "unknown_with_hints" ? "UNKNOWN WITH HINTS" : "UNMARKED"} verdict for "${dFile.name}" (z=${wm.z.toFixed(1)}, no verified payload)`);
+        : `${provenance.displayTitle.toUpperCase()} for "${dFile.name}" (z=${wm.z.toFixed(1)}, ${provenance.displaySubtitle})`);
     } catch { setDRes({ error: "Detection failed on this file." }); }
     setDBusy(false);
   };
@@ -218,29 +298,51 @@ export default function AudiomarkAI() {
     ["Feedback loop", "Opt-in feedback below is logged to the local audit trail"],
   ];
 
+  const backendLabel = {
+    checking: "Backend checking",
+    connected: "Backend model connected",
+    unreachable: "Backend unavailable",
+    browser_only: "Browser-only mode",
+  }[backendStatus];
+
   const liveResult = dRes && !dRes.error ? {
     verdict: dRes.provenance.verdict,
     claim_level: dRes.provenance.claimLevel,
+    generation_claim_level: dRes.provenance.generationClaimLevel,
+    provider_claim_level: dRes.provenance.providerClaimLevel,
+    provider_verification_status: dRes.provenance.providerVerificationStatus,
     provider: dRes.provenance.provider,
+    attributed_provider: dRes.provenance.attributedProvider,
+    attributed_system: dRes.provenance.attributedSystem,
     provider_candidates: dRes.provenance.providerCandidates,
     system: dRes.provenance.system,
     content_id: dRes.provenance.contentId,
     created_at: dRes.provenance.createdAt,
     confidence: dRes.provenance.confidence,
+    attribution_confidence: dRes.provenance.attributionConfidence,
     resolved_via: dRes.provenance.resolvedVia,
+    attribution_resolved_via: dRes.provenance.attributionResolvedVia,
     official_check_status: dRes.provenance.officialCheckStatus,
+    backend_used: dRes.backendUsed,
+    audio_decode: dRes.audioDecode,
+    classifier: dRes.classifier,
     watermark: { found: dRes.wm.found, z: Number(dRes.wm.z.toFixed(2)), confidence: Number(dRes.wm.confidence.toFixed(1)), repetitions: dRes.wm.repetitions },
     signals: dRes.provenance.signals,
     limitations: dRes.provenance.limitations,
   } : null;
 
-  const provenanceFields = dRes?.provenance?.provider ? [
-    ["Claim level", dRes.provenance.claimLevel],
-    ["Provider / Platform", dRes.provenance.provider],
-    ["System version", dRes.provenance.system],
+  const provenanceFields = dRes && !dRes.error ? [
+    ["Verdict", dRes.provenance.displayTitle],
+    ["Generation claim", dRes.provenance.generationClaimLevel],
+    ["Provider claim", dRes.provenance.providerClaimLevel],
+    ["Provider verification", dRes.provenance.providerVerificationStatus],
+    ["Provider / Platform", dRes.provenance.attributedProvider || dRes.provenance.provider || "Unknown"],
+    ["System version", dRes.provenance.attributedSystem || dRes.provenance.system || "Unknown"],
+    ["Audio decode", dRes.audioDecode?.status || "not run"],
+    ["Local classifier", dRes.classifier?.status || "not run"],
     ["Timestamp", fmtT(dRes.provenance.createdAt)],
     ["Unique content ID", dRes.provenance.contentId || "—"],
-    ["Resolved via", dRes.provenance.resolvedVia],
+    ["Resolved via", dRes.provenance.attributionResolvedVia || dRes.provenance.resolvedVia],
     ["Record status", dRes.provenance.record ? (dRes.provenance.record.status === "active" ? "Active" : "⚠ In 96h revocation window") : "External or unregistered payload"],
   ] : null;
 
@@ -261,17 +363,17 @@ export default function AudiomarkAI() {
 
         <div className="hero-grid">
           <div className="hero-copy">
-            <p className="eyebrow">California AI Transparency Act MVP</p>
-            <h1>Public audio provenance verification for GenAI providers.</h1>
+            <p className="eyebrow">Third-party AI audio screening</p>
+            <h1>Evidence-based detection for probable AI-generated audio.</h1>
             <p className="hero-text">
-              A verification portal for detecting latent audio disclosures, returning system
-              provenance, and preserving a privacy-first no-retention posture — the mark and
-              manifest are real, computed client-side against the uploaded file.
+              Upload audio to combine backend model analysis with provenance checks for
+              watermark payloads, C2PA manifests, provider hints, and local attribution.
+              Results stay explicit about verified, detected, probable, hint-only, and unknown evidence.
             </p>
             <div className="hero-metrics" aria-label="Compliance highlights">
-              <div><strong>$0</strong><span>public detection</span></div>
+              <div><strong>5</strong><span>evidence levels</span></div>
+              <div><strong>MP3</strong><span>backend decode path</span></div>
               <div><strong>0s</strong><span>content retention</span></div>
-              <div><strong>96h</strong><span>license response clock</span></div>
             </div>
           </div>
 
@@ -281,7 +383,7 @@ export default function AudiomarkAI() {
                 <p className="eyebrow">{mode === "detect" ? "Detection Portal" : "Embed Portal"}</p>
                 <h2 id="verify-title">{mode === "detect" ? "Verify audio provenance" : "Create a disclosure record"}</h2>
               </div>
-              <span className="status-pill">No content retained</span>
+              <span className={`status-pill backend-${backendStatus}`}>{mode === "detect" ? backendLabel : "No content retained"}</span>
             </div>
 
             <div className="segmented" role="tablist" aria-label="Mode">
@@ -294,15 +396,18 @@ export default function AudiomarkAI() {
                 <div className="verify-form">
                   <DropZone
                     label="Select an audio file"
-                    sublabel="WAV, MP3, M4A, FLAC — processed in memory, zero permanent storage"
+                    sublabel="WAV, MP3, M4A, FLAC — backend model when connected, browser fallback otherwise"
                     fileName={dFile?.name}
                     onFile={onDetectFile}
                     disabled={dBusy}
                   />
-                  {dFile && <Waveform samples={dFile.samples} />}
+                  {dFile?.samples && <Waveform samples={dFile.samples} />}
+                  {dFile?.browserDecodeError && (
+                    <p className="inline-warning">Browser preview decode failed; the backend can still analyze this upload if connected.</p>
+                  )}
                   <div style={{ display: "flex", gap: 10 }}>
                     <button className="primary-button" type="button" onClick={runDetect} disabled={!dFile || dBusy} style={{ flex: 1 }}>
-                      {dBusy ? "Checking…" : "Verify provenance"}
+                      {dBusy ? "Checking…" : "Run AI audio check"}
                     </button>
                     {(dFile || dRes) && <button className="ghost-button" type="button" onClick={resetDetect}>Clear</button>}
                   </div>
@@ -313,12 +418,12 @@ export default function AudiomarkAI() {
                 {dRes && !dRes.error && (
                   <div className={"result-box visible" + (!dRes.aiDetected ? "" : "")}>
                     <div>
-                      <span className="result-label">{dRes.aiDetected ? "AI-generated" : dRes.provenance.claimLevel === "probable" ? "Probably AI-generated" : dRes.provenance.verdict === "unknown_with_hints" ? "Unknown with metadata hints" : "Unmarked / unknown"}</span>
-                      <strong>{dRes.aiDetected ? `${dRes.provenance.confidence}% verified confidence` : dRes.provenance.claimLevel === "probable" ? `${dRes.provenance.confidence}% probable attribution` : dRes.provenance.verdict === "unknown_with_hints" ? "No verified payload recovered" : "No signals recovered"}</strong>
-                      <p>{dFile?.name} — z={dRes.wm.z.toFixed(2)} · {dRes.provenance.resolvedVia || "not resolved"}</p>
+                      <span className="result-label">{dRes.provenance.displayTitle}</span>
+                      <strong>{dRes.provenance.displaySubtitle}</strong>
+                      <p>{dFile?.name} — {dRes.audioDecode?.status || "decode not run"} · {dRes.classifier?.status || "classifier not run"} · {dRes.provenance.resolvedVia || dRes.provenance.attributionResolvedVia || "not resolved"}</p>
                     </div>
                     <div className="confidence-ring" style={{ "--pct": String(dRes.provenance.confidence) }}>
-                      {dRes.provenance.confidence}
+                      {dRes.provenance.attributionConfidence || dRes.provenance.confidence}
                     </div>
                   </div>
                 )}
@@ -386,7 +491,7 @@ export default function AudiomarkAI() {
             ))}
           </div>
         ) : (
-          <p className="empty-note">Run <b>Verify provenance</b> above on a file to see resolved provenance fields here.</p>
+          <p className="empty-note">Run <b>AI audio check</b> above on a file to see resolved provenance fields here.</p>
         )}
       </section>
 
@@ -445,21 +550,27 @@ export default function AudiomarkAI() {
           <div className="test-panel">
             <h3>Per-signal status</h3>
             {[
+              ["Backend model API", dRes && !dRes.error ? (dRes.backendUsed ? "connected" : backendLabel.toLowerCase()) : backendLabel.toLowerCase()],
+              ["Audio decode", dRes && !dRes.error ? `${dRes.audioDecode?.status || "not run"}${dRes.audioDecode?.sample_rate ? ` · ${dRes.audioDecode.sample_rate} Hz` : ""}` : "—"],
+              ["Local attribution classifier", dRes && !dRes.error ? (dRes.classifier?.status || "not run") : "—"],
               ["Audiomark SS/v1 latent mark", dRes && !dRes.error ? (dRes.wm.found ? `decoded · ${dRes.wm.repetitions}× reps` : "not detected") : "—"],
               ["Embedded C2PA manifest", dRes && !dRes.error ? (dRes.meta.manifest ? "parsed" : "not found") : "—"],
               ["JUMBF container markers", dRes && !dRes.error ? (dRes.meta.jumbf ? "present" : "not found") : "—"],
               ["ID3v2 metadata block", dRes && !dRes.error ? (dRes.meta.id3 ? "present" : "not found") : "—"],
-              ["Verified provenance", dRes && !dRes.error ? (dRes.provenance.claimLevel === "verified" ? `${dRes.provenance.provider} via ${dRes.provenance.resolvedVia}` : "not resolved") : "—"],
-              ["Probable attribution", dRes && !dRes.error ? (dRes.provenance.claimLevel === "probable" ? `${dRes.provenance.provider} via ${dRes.provenance.resolvedVia}` : "not used") : "—"],
+              ["Verified provenance", dRes && !dRes.error ? (dRes.provenance.providerVerificationStatus === "verified" ? `${dRes.provenance.attributedProvider || dRes.provenance.provider} via ${dRes.provenance.attributionResolvedVia || dRes.provenance.resolvedVia}` : "not resolved") : "—"],
+              ["C2PA detected", dRes && !dRes.error ? (dRes.provenance.generationClaimLevel === "detected" ? dRes.provenance.displaySubtitle : "not detected") : "—"],
+              ["Probable attribution", dRes && !dRes.error ? (dRes.provenance.generationClaimLevel === "probable" ? `${dRes.provenance.attributedProvider || dRes.provenance.provider} via ${dRes.provenance.attributionResolvedVia || dRes.provenance.resolvedVia}` : "not used") : "—"],
               ["Official provider checks", dRes && !dRes.error ? dRes.provenance.officialCheckStatus.status : "—"],
               ["Google SynthID-Audio decoder", dRes && !dRes.error ? (dRes.provenance.signals.some((s) => s.id === "google_synthid" && s.status === "verified") ? "verified payload" : "unsupported official decoder") : "—"],
               ["WMAR clustered-token detector", dRes && !dRes.error ? "experimental backend hook" : "—"],
             ].map(([name, status]) => (
               <div className="test-row" key={name}>
                 <span>{name}</span>
-                <strong className={status.includes("decoded") || status.includes("parsed") || status.includes("present") || status.includes("verified") ? "pass" : status.includes("unsupported") || status.includes("experimental") || status.includes("probable") || status.includes("not_configured") ? "review" : ""}>{status}</strong>
+                <strong className={status.includes("connected") || status.includes("decoded") || status.includes("parsed") || status.includes("present") || status.includes("verified") ? "pass" : status.includes("unavailable") || status.includes("unsupported") || status.includes("experimental") || status.includes("probable") || status.includes("not_configured") || status.includes("not run") ? "review" : ""}>{status}</strong>
               </div>
             ))}
+            {dRes?.audioDecode?.detail && <p className="small-note">{dRes.audioDecode.detail}</p>}
+            {dRes?.classifier?.detail && <p className="small-note">{dRes.classifier.detail}</p>}
             {dRes?.meta?.vendorHints?.length > 0 && (
               <div className="test-row">
                 <span>Vendor strings found</span>

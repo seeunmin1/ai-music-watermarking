@@ -1,4 +1,7 @@
 .uv-cache/
+.uv-python/
+.venv/
+.tools/
 __pycache__/
 *.pyc
 web/dist/

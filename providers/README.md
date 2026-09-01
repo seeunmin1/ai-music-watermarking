@@ -13,12 +13,17 @@ Required fields:
 - `supported_media`
 - `signals`
 - `c2pa_issuers`
+- optional `c2pa_identity` patterns for certificate subjects, issuers, and
+  claim-generator strings
 - `official_verification`
 - `confidence_policy`
 - `parser_adapter`
 
 Claim policy:
 
-- Official API or trusted C2PA/watermark matches may produce `verified`.
+- Official API, trusted C2PA signature validation, or registered Audiomark
+  watermark matches may produce `verified`.
+- C2PA manifests that match a provider profile but do not validate against a
+  trusted signature are reported as `detected`, not `verified`.
 - Local attribution models may produce only `probable`.
 - Metadata aliases and product names produce only `unknown` hints.
