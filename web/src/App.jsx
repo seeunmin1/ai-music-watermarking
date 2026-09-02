@@ -5,7 +5,7 @@ import {
 import { loadState, saveState, buildManifest } from "./persistence.js";
 import { analyzeProvenance, VENDOR_LABELS } from "./provenance.js";
 
-const DETECTION_API_URL = import.meta.env.VITE_PROVENANCE_API_URL || "";
+const DETECTION_API_URL = import.meta.env.VITE_PROVENANCE_API_URL || "/api";
 const EMPTY_WATERMARK = { found: false, recordId: 0, z: 0, confidence: 0, repetitions: 0 };
 
 function normalizeBackendDetection(detection) {

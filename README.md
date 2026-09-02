@@ -79,7 +79,34 @@ Registry and audit records are stored as JSON files next to the script.
 
 The web app can call the local backend for official-provider and classifier
 checks when started with `VITE_PROVENANCE_API_URL=http://127.0.0.1:8787`.
-Without that variable, it still runs the lightweight in-browser detector.
+Without that variable, it uses the same-origin `/api` backend when deployed;
+if it cannot be reached, the app still runs the lightweight in-browser detector.
+
+## Deploying to Vercel
+
+Deploy this repository as a single Vercel project from the repository root.
+The included `vercel.json` builds the Vite frontend in `web/` and deploys the
+Python detection functions at `/api/health` and `/api/detect` alongside it.
+
+```bash
+vercel
+```
+
+In Vercel project settings, leave **Root Directory** at the repository root.
+The checked-in `vercel.json` pins the Vite framework, installs frontend
+dependencies from `web/`, and supplies the build/output configuration.
+`/api/detect` accepts a `multipart/form-data`
+upload under the `file` field, uses a temporary file only for the request, and
+does not persist serverless audit records. The current function limits uploads
+to 4 MB, within Vercel request limits.
+
+Set optional server-side environment variables in Vercel when the corresponding
+integrations are available: `OPENAI_API_KEY`, `AUDIOMARK_C2PATOOL_PATH`,
+`AUDIOMARK_C2PA_TRUST_ANCHORS`, `AUDIOMARK_C2PA_ALLOWED_LIST`,
+`AUDIOMARK_C2PA_TRUST_CONFIG`, plus any provider endpoint or credential
+variables used by your configured provider adapters. Do not set
+`VITE_PROVENANCE_API_URL` for the normal Vercel deployment: the frontend uses
+the deployed same-origin API by default.
 
 ### External C2PA verification
 
