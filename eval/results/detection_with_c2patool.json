@@ -1,0 +1,268 @@
+{
+  "dataset": {
+    "items_evaluated": 6,
+    "scored_binary": 5,
+    "ai_assisted_excluded": 1,
+    "errors": 0,
+    "missing_from_disk": [],
+    "cohorts": {
+      "third_party_ai": {
+        "ai": 4
+      },
+      "human": {
+        "human": 1
+      },
+      "ai_assisted": {
+        "ai_assisted": 1
+      }
+    }
+  },
+  "policies": {
+    "strict": {
+      "true_positive": 4,
+      "false_positive": 0,
+      "true_negative": 1,
+      "false_negative": 0,
+      "total": 5,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0,
+      "f1": 1.0
+    },
+    "disclosure": {
+      "true_positive": 4,
+      "false_positive": 0,
+      "true_negative": 1,
+      "false_negative": 0,
+      "total": 5,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0,
+      "f1": 1.0
+    },
+    "permissive": {
+      "true_positive": 4,
+      "false_positive": 0,
+      "true_negative": 1,
+      "false_negative": 0,
+      "total": 5,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "specificity": 1.0,
+      "f1": 1.0
+    }
+  },
+  "coverage": {
+    "ai_files": 4,
+    "payload_recovered": 4,
+    "metadata_hint_only": 0,
+    "no_signal": 0,
+    "payload_rate": 1.0
+  },
+  "provider_attribution": {
+    "ai_files_with_known_provider": 4,
+    "provider_named": 4,
+    "provider_correct": 4,
+    "precision_when_named": 1.0
+  },
+  "verdict_distribution": {
+    "ai": {
+      "ai_generated": 4
+    },
+    "human": {
+      "unmarked_or_unknown": 1
+    },
+    "ai_assisted": {
+      "unmarked_or_unknown": 1
+    }
+  },
+  "ai_assisted": [
+    {
+      "id": "assisted_western_detective_game",
+      "path": "/Users/sarahmin/Downloads/Western Detective Game.wav",
+      "label": "ai_assisted",
+      "cohort": "ai_assisted",
+      "expected_provider": null,
+      "expected_provenance": "unknown",
+      "verdict": "unmarked_or_unknown",
+      "claim_level": "unknown",
+      "declares_ai_generated": false,
+      "display_title": "Unmarked / unknown",
+      "detected_provider": null,
+      "detected_system": null,
+      "provider_verification": "unknown",
+      "resolved_via": null,
+      "confidence": 0,
+      "manifest_found": false,
+      "manifest_format": null,
+      "vendor_hints": [],
+      "watermark_found": false,
+      "watermark_z": 1.093,
+      "audio_decoded": true,
+      "classifier_status": "not_configured"
+    }
+  ],
+  "errors": [],
+  "rows": [
+    {
+      "id": "gemini_clock",
+      "path": "/Users/sarahmin/Downloads/The_Clock_Makes_No_Sound.mp3",
+      "label": "ai",
+      "cohort": "third_party_ai",
+      "expected_provider": "Google",
+      "expected_provenance": "c2pa_signed",
+      "verdict": "ai_generated",
+      "claim_level": "verified",
+      "declares_ai_generated": true,
+      "display_title": "Verified AI-generated",
+      "detected_provider": "Google",
+      "detected_system": "Google C2PA Core Generator Library",
+      "provider_verification": "verified",
+      "resolved_via": "Google C2PA Content Credentials",
+      "confidence": 95,
+      "manifest_found": true,
+      "manifest_format": "jumbf_cbor",
+      "vendor_hints": [
+        "google",
+        "synthid"
+      ],
+      "watermark_found": false,
+      "watermark_z": 1.044,
+      "audio_decoded": true,
+      "classifier_status": "not_configured"
+    },
+    {
+      "id": "gemini_tuesday",
+      "path": "/Users/sarahmin/Downloads/Tuesday_Morning_Pavement.mp3",
+      "label": "ai",
+      "cohort": "third_party_ai",
+      "expected_provider": "Google",
+      "expected_provenance": "c2pa_signed",
+      "verdict": "ai_generated",
+      "claim_level": "verified",
+      "declares_ai_generated": true,
+      "display_title": "Verified AI-generated",
+      "detected_provider": "Google",
+      "detected_system": "Google C2PA Core Generator Library",
+      "provider_verification": "verified",
+      "resolved_via": "Google C2PA Content Credentials",
+      "confidence": 95,
+      "manifest_found": true,
+      "manifest_format": "jumbf_cbor",
+      "vendor_hints": [
+        "google",
+        "synthid"
+      ],
+      "watermark_found": false,
+      "watermark_z": 0.925,
+      "audio_decoded": true,
+      "classifier_status": "not_configured"
+    },
+    {
+      "id": "gemini_blinds",
+      "path": "/Users/sarahmin/Downloads/Blinds_Left_Open.mp3",
+      "label": "ai",
+      "cohort": "third_party_ai",
+      "expected_provider": "Google",
+      "expected_provenance": "c2pa_signed",
+      "verdict": "ai_generated",
+      "claim_level": "verified",
+      "declares_ai_generated": true,
+      "display_title": "Verified AI-generated",
+      "detected_provider": "Google",
+      "detected_system": "Google C2PA Core Generator Library",
+      "provider_verification": "verified",
+      "resolved_via": "Google C2PA Content Credentials",
+      "confidence": 95,
+      "manifest_found": true,
+      "manifest_format": "jumbf_cbor",
+      "vendor_hints": [
+        "google",
+        "meta",
+        "synthid"
+      ],
+      "watermark_found": false,
+      "watermark_z": 0.908,
+      "audio_decoded": true,
+      "classifier_status": "not_configured"
+    },
+    {
+      "id": "gemini_coldspot",
+      "path": "/Users/sarahmin/Downloads/Cold_Spot_on_the_Floor.mp3",
+      "label": "ai",
+      "cohort": "third_party_ai",
+      "expected_provider": "Google",
+      "expected_provenance": "c2pa_signed",
+      "verdict": "ai_generated",
+      "claim_level": "verified",
+      "declares_ai_generated": true,
+      "display_title": "Verified AI-generated",
+      "detected_provider": "Google",
+      "detected_system": "Google C2PA Core Generator Library",
+      "provider_verification": "verified",
+      "resolved_via": "Google C2PA Content Credentials",
+      "confidence": 95,
+      "manifest_found": true,
+      "manifest_format": "jumbf_cbor",
+      "vendor_hints": [
+        "google",
+        "synthid"
+      ],
+      "watermark_found": false,
+      "watermark_z": 1.028,
+      "audio_decoded": true,
+      "classifier_status": "not_configured"
+    },
+    {
+      "id": "human_chopin_mazurka_op7no5",
+      "path": "/Users/sarahmin/Downloads/Blue Dot Sessions - Chopin - Mazurka Op7No5.mp3",
+      "label": "human",
+      "cohort": "human",
+      "expected_provider": null,
+      "expected_provenance": "none",
+      "verdict": "unmarked_or_unknown",
+      "claim_level": "unknown",
+      "declares_ai_generated": false,
+      "display_title": "Unmarked / unknown",
+      "detected_provider": null,
+      "detected_system": null,
+      "provider_verification": "unknown",
+      "resolved_via": null,
+      "confidence": 0,
+      "manifest_found": false,
+      "manifest_format": null,
+      "vendor_hints": [],
+      "watermark_found": false,
+      "watermark_z": 0.765,
+      "audio_decoded": true,
+      "classifier_status": "not_configured"
+    },
+    {
+      "id": "assisted_western_detective_game",
+      "path": "/Users/sarahmin/Downloads/Western Detective Game.wav",
+      "label": "ai_assisted",
+      "cohort": "ai_assisted",
+      "expected_provider": null,
+      "expected_provenance": "unknown",
+      "verdict": "unmarked_or_unknown",
+      "claim_level": "unknown",
+      "declares_ai_generated": false,
+      "display_title": "Unmarked / unknown",
+      "detected_provider": null,
+      "detected_system": null,
+      "provider_verification": "unknown",
+      "resolved_via": null,
+      "confidence": 0,
+      "manifest_found": false,
+      "manifest_format": null,
+      "vendor_hints": [],
+      "watermark_found": false,
+      "watermark_z": 1.093,
+      "audio_decoded": true,
+      "classifier_status": "not_configured"
+    }
+  ]
+}

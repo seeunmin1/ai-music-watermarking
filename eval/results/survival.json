@@ -1,0 +1,341 @@
+{
+  "summary": {
+    "original": {
+      "survived": 4,
+      "total": 4,
+      "rate": 1.0
+    },
+    "mp3_320": {
+      "survived": 0,
+      "total": 4,
+      "rate": 0.0
+    },
+    "mp3_192": {
+      "survived": 0,
+      "total": 4,
+      "rate": 0.0
+    },
+    "mp3_128": {
+      "survived": 0,
+      "total": 4,
+      "rate": 0.0
+    },
+    "wav_bounce": {
+      "survived": 0,
+      "total": 4,
+      "rate": 0.0
+    },
+    "id3_stripped": {
+      "survived": 0,
+      "total": 4,
+      "rate": 0.0
+    }
+  },
+  "rows": [
+    {
+      "manifest_found": true,
+      "manifest_format": "jumbf_cbor",
+      "declares_ai": true,
+      "jumbf": true,
+      "id3": true,
+      "vendor_hints": [
+        "google",
+        "synthid"
+      ],
+      "bytes": 4249196,
+      "file": "The_Clock_Makes_No_Sound.mp3",
+      "operation": "original",
+      "description": "As downloaded from the generator"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 7072914,
+      "file": "The_Clock_Makes_No_Sound.mp3",
+      "operation": "mp3_320",
+      "description": "Re-encoded to 320 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 4243748,
+      "file": "The_Clock_Makes_No_Sound.mp3",
+      "operation": "mp3_192",
+      "description": "Re-encoded to 192 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 2829165,
+      "file": "The_Clock_Makes_No_Sound.mp3",
+      "operation": "mp3_128",
+      "description": "Re-encoded to 128 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 15593516,
+      "file": "The_Clock_Makes_No_Sound.mp3",
+      "operation": "wav_bounce",
+      "description": "Bounced to PCM WAV"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 4243120,
+      "file": "The_Clock_Makes_No_Sound.mp3",
+      "operation": "id3_stripped",
+      "description": "ID3 tag removed"
+    },
+    {
+      "manifest_found": true,
+      "manifest_format": "jumbf_cbor",
+      "declares_ai": true,
+      "jumbf": true,
+      "id3": true,
+      "vendor_hints": [
+        "google",
+        "synthid"
+      ],
+      "bytes": 744606,
+      "file": "Tuesday_Morning_Pavement.mp3",
+      "operation": "original",
+      "description": "As downloaded from the generator"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 1231934,
+      "file": "Tuesday_Morning_Pavement.mp3",
+      "operation": "mp3_320",
+      "description": "Re-encoded to 320 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 739160,
+      "file": "Tuesday_Morning_Pavement.mp3",
+      "operation": "mp3_192",
+      "description": "Re-encoded to 192 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 492773,
+      "file": "Tuesday_Morning_Pavement.mp3",
+      "operation": "mp3_128",
+      "description": "Re-encoded to 128 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 2714156,
+      "file": "Tuesday_Morning_Pavement.mp3",
+      "operation": "wav_bounce",
+      "description": "Bounced to PCM WAV"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 738532,
+      "file": "Tuesday_Morning_Pavement.mp3",
+      "operation": "id3_stripped",
+      "description": "ID3 tag removed"
+    },
+    {
+      "manifest_found": true,
+      "manifest_format": "jumbf_cbor",
+      "declares_ai": true,
+      "jumbf": true,
+      "id3": true,
+      "vendor_hints": [
+        "google",
+        "meta",
+        "synthid"
+      ],
+      "bytes": 744609,
+      "file": "Blinds_Left_Open.mp3",
+      "operation": "original",
+      "description": "As downloaded from the generator"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [
+        "sora"
+      ],
+      "bytes": 1231934,
+      "file": "Blinds_Left_Open.mp3",
+      "operation": "mp3_320",
+      "description": "Re-encoded to 320 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 739160,
+      "file": "Blinds_Left_Open.mp3",
+      "operation": "mp3_192",
+      "description": "Re-encoded to 192 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 492773,
+      "file": "Blinds_Left_Open.mp3",
+      "operation": "mp3_128",
+      "description": "Re-encoded to 128 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 2714156,
+      "file": "Blinds_Left_Open.mp3",
+      "operation": "wav_bounce",
+      "description": "Bounced to PCM WAV"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [
+        "meta"
+      ],
+      "bytes": 738532,
+      "file": "Blinds_Left_Open.mp3",
+      "operation": "id3_stripped",
+      "description": "ID3 tag removed"
+    },
+    {
+      "manifest_found": true,
+      "manifest_format": "jumbf_cbor",
+      "declares_ai": true,
+      "jumbf": true,
+      "id3": true,
+      "vendor_hints": [
+        "google",
+        "synthid"
+      ],
+      "bytes": 744609,
+      "file": "Cold_Spot_on_the_Floor.mp3",
+      "operation": "original",
+      "description": "As downloaded from the generator"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 1231934,
+      "file": "Cold_Spot_on_the_Floor.mp3",
+      "operation": "mp3_320",
+      "description": "Re-encoded to 320 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 739160,
+      "file": "Cold_Spot_on_the_Floor.mp3",
+      "operation": "mp3_192",
+      "description": "Re-encoded to 192 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 492773,
+      "file": "Cold_Spot_on_the_Floor.mp3",
+      "operation": "mp3_128",
+      "description": "Re-encoded to 128 kbps MP3"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 2714156,
+      "file": "Cold_Spot_on_the_Floor.mp3",
+      "operation": "wav_bounce",
+      "description": "Bounced to PCM WAV"
+    },
+    {
+      "manifest_found": false,
+      "manifest_format": null,
+      "declares_ai": false,
+      "jumbf": false,
+      "id3": false,
+      "vendor_hints": [],
+      "bytes": 738532,
+      "file": "Cold_Spot_on_the_Floor.mp3",
+      "operation": "id3_stripped",
+      "description": "ID3 tag removed"
+    }
+  ]
+}

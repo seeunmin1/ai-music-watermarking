@@ -1,0 +1,116 @@
+{
+  "carrier": "Blue Dot Sessions - Chopin - Mazurka Op7No5.mp3",
+  "duration_s": 40.0,
+  "rate": 16000,
+  "cross_detection": {
+    "clean": {
+      "audiomark": {
+        "found": false,
+        "id_correct": false,
+        "z": 1.24
+      },
+      "audioseal_p": 0.0639
+    },
+    "audiomark_marked": {
+      "audiomark": {
+        "found": true,
+        "id_correct": true,
+        "z": 11.04
+      },
+      "audioseal_p": 0.1331,
+      "snr_db": 20.1
+    },
+    "audioseal_marked": {
+      "audiomark": {
+        "found": false,
+        "id_correct": false,
+        "z": 1.24
+      },
+      "audioseal_p": 1.0,
+      "snr_db": 36.6
+    }
+  },
+  "robustness": [
+    {
+      "perturbation": "none",
+      "severity": "mild",
+      "audiomark_baseline": true,
+      "audiomark_sync": true,
+      "audiomark_z": 11.04,
+      "audioseal_p": 1.0,
+      "audioseal_survived": true
+    },
+    {
+      "perturbation": "mp3_192",
+      "severity": "moderate",
+      "audiomark_baseline": false,
+      "audiomark_sync": true,
+      "audiomark_z": 6.68,
+      "audioseal_p": 0.8504,
+      "audioseal_survived": true
+    },
+    {
+      "perturbation": "mp3_96",
+      "severity": "severe",
+      "audiomark_baseline": false,
+      "audiomark_sync": true,
+      "audiomark_z": 6.68,
+      "audioseal_p": 0.8171,
+      "audioseal_survived": true
+    },
+    {
+      "perturbation": "crop_0s5",
+      "severity": "moderate",
+      "audiomark_baseline": false,
+      "audiomark_sync": true,
+      "audiomark_z": 9.66,
+      "audioseal_p": 0.9999,
+      "audioseal_survived": true
+    },
+    {
+      "perturbation": "shift_1000",
+      "severity": "moderate",
+      "audiomark_baseline": false,
+      "audiomark_sync": true,
+      "audiomark_z": 11.06,
+      "audioseal_p": 0.9743,
+      "audioseal_survived": true
+    },
+    {
+      "perturbation": "noise_snr20",
+      "severity": "severe",
+      "audiomark_baseline": true,
+      "audiomark_sync": true,
+      "audiomark_z": 10.98,
+      "audioseal_p": 0.5059,
+      "audioseal_survived": true
+    },
+    {
+      "perturbation": "lowpass_8k",
+      "severity": "severe",
+      "audiomark_baseline": true,
+      "audiomark_sync": true,
+      "audiomark_z": 11.04,
+      "audioseal_p": 1.0,
+      "audioseal_survived": true
+    },
+    {
+      "perturbation": "compression",
+      "severity": "moderate",
+      "audiomark_baseline": true,
+      "audiomark_sync": true,
+      "audiomark_z": 12.71,
+      "audioseal_p": 0.9971,
+      "audioseal_survived": true
+    },
+    {
+      "perturbation": "time_stretch_1pct",
+      "severity": "severe",
+      "audiomark_baseline": false,
+      "audiomark_sync": false,
+      "audiomark_z": 1.27,
+      "audioseal_p": 0.0248,
+      "audioseal_survived": false
+    }
+  ]
+}

@@ -4,6 +4,10 @@
 .tools/
 __pycache__/
 *.pyc
+.pytest_cache/
 web/dist/
+
+# Validation corpus: rebuilt from public datasets by eval/fetch_corpus.py
+ai-music-corpus/
 
 .vercel

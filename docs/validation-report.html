@@ -1,0 +1,756 @@
+<title>Audiomark Validation Findings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  :root {
+    --ground: #EEF1F3;
+    --surface: #FFFFFF;
+    --surface-sunk: #E4E9EC;
+    --ink: #12181C;
+    --ink-soft: #45535B;
+    --ink-faint: #6E7F88;
+    --rule: #CFD8DD;
+    --rule-soft: #DFE5E9;
+    --accent: #0E7C86;
+    --accent-soft: #D6EBEC;
+    --pass: #2C7A55;
+    --pass-soft: #DCEDE3;
+    --fail: #B23A28;
+    --fail-soft: #F6DFDB;
+    --partial: #9C6B14;
+    --partial-soft: #F5E7CD;
+    --meter-track: #D8E0E4;
+
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0D1316;
+      --surface: #141C21;
+      --surface-sunk: #101216;
+      --ink: #E6EDF0;
+      --ink-soft: #A3B3BB;
+      --ink-faint: #74868F;
+      --rule: #27343A;
+      --rule-soft: #1E2A2F;
+      --accent: #3FC3CE;
+      --accent-soft: #10333A;
+      --pass: #5DBE8B;
+      --pass-soft: #122E22;
+      --fail: #E4735C;
+      --fail-soft: #331812;
+      --partial: #D9A343;
+      --partial-soft: #302410;
+      --meter-track: #233137;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #0D1316;
+    --surface: #141C21;
+    --surface-sunk: #101216;
+    --ink: #E6EDF0;
+    --ink-soft: #A3B3BB;
+    --ink-faint: #74868F;
+    --rule: #27343A;
+    --rule-soft: #1E2A2F;
+    --accent: #3FC3CE;
+    --accent-soft: #10333A;
+    --pass: #5DBE8B;
+    --pass-soft: #122E22;
+    --fail: #E4735C;
+    --fail-soft: #331812;
+    --partial: #D9A343;
+    --partial-soft: #302410;
+    --meter-track: #233137;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 20px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .col { max-width: 680px; }
+
+  .masthead {
+    padding: 56px 0 30px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 38px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 18px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(34px, 5.2vw, 52px);
+    line-height: 1.04;
+    letter-spacing: -0.021em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-size: 20px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    margin: 0 0 26px;
+    max-width: 640px;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 26px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+  .meta b { color: var(--ink-soft); font-weight: 500; }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin-bottom: 46px;
+  }
+  .board-cell { background: var(--surface); padding: 20px 22px 22px; }
+  .board-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 12px;
+  }
+  .board-figure {
+    font-family: var(--display);
+    font-size: 33px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    margin-bottom: 9px;
+  }
+  .board-figure .arrow { font-size: 19px; color: var(--ink-faint); font-weight: 500; }
+  .board-note { font-size: 14px; line-height: 1.45; color: var(--ink-soft); margin: 0; }
+  .num-fail { color: var(--fail); }
+  .num-pass { color: var(--pass); }
+  .num-accent { color: var(--accent); }
+
+  section { margin-bottom: 54px; }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 8px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .sec-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+  }
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 25px;
+    letter-spacing: -0.014em;
+    margin: 0;
+    flex: 1;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 16.5px;
+    letter-spacing: -0.006em;
+    margin: 30px 0 10px;
+  }
+  p { margin: 0 0 15px; }
+  .col p, .col ul, .col ol { max-width: 680px; }
+  strong { font-weight: 600; }
+  code {
+    font-family: var(--mono);
+    font-size: 0.855em;
+    background: var(--surface-sunk);
+    padding: 0.12em 0.36em;
+    border-radius: 2px;
+    color: var(--ink);
+  }
+
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    vertical-align: 0.14em;
+    white-space: nowrap;
+  }
+  .chip-fixed { background: var(--pass-soft); color: var(--pass); }
+  .chip-open { background: var(--partial-soft); color: var(--partial); }
+  .chip-blocked { background: var(--fail-soft); color: var(--fail); }
+
+  .callout {
+    border-left: 3px solid var(--partial);
+    background: var(--surface);
+    padding: 18px 22px;
+    margin: 24px 0;
+    max-width: 680px;
+  }
+  .callout.key { border-left-color: var(--accent); }
+  .callout-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--partial);
+    margin: 0 0 7px;
+  }
+  .callout.key .callout-label { color: var(--accent); }
+  .callout p { margin: 0 0 10px; font-size: 15.5px; line-height: 1.55; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .code {
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule-soft);
+    border-left: 3px solid var(--accent);
+    padding: 16px 18px;
+    margin: 20px 0;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.72;
+    white-space: pre;
+    color: var(--ink-soft);
+  }
+  .code .k { color: var(--accent); font-weight: 500; }
+  .code .v { color: var(--ink); }
+
+  .table-scroll { overflow-x: auto; margin: 22px 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 13px;
+    min-width: 460px;
+  }
+  th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding: 0 16px 9px 0;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 16px 10px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    font-variant-numeric: tabular-nums;
+    vertical-align: baseline;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.lead { color: var(--ink); }
+  .dim { color: var(--ink-faint); }
+  .hot { color: var(--fail); font-weight: 500; }
+  .good { color: var(--pass); font-weight: 500; }
+
+  /* survival strip */
+  .survival { border: 1px solid var(--rule); background: var(--surface); margin: 24px 0 12px; }
+  .srow {
+    display: grid;
+    grid-template-columns: minmax(130px, 1fr) 96px 74px minmax(150px, 1.1fr);
+    gap: 16px;
+    align-items: center;
+    padding: 11px 18px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .srow:last-child { border-bottom: none; }
+  .srow.head { background: var(--surface-sunk); border-bottom: 1px solid var(--rule); }
+  .srow.head span {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .sname { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+  .pips { display: flex; gap: 4px; }
+  .pip { width: 15px; height: 15px; border: 1.5px solid var(--rule); }
+  .pip.on { background: var(--pass); border-color: var(--pass); }
+  .pip.off { background: transparent; border-color: var(--fail); }
+  .srate { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .smodel { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+
+  /* robustness matrix */
+  .matrix { border: 1px solid var(--rule); background: var(--surface); margin: 24px 0 14px; }
+  .mrow {
+    display: grid;
+    grid-template-columns: minmax(150px, 1.25fr) 88px 1fr 1fr;
+    gap: 16px;
+    align-items: center;
+    padding: 9px 18px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .mrow:last-child { border-bottom: none; }
+  .mrow.head { border-bottom: 1px solid var(--rule); padding: 12px 18px 11px; background: var(--surface-sunk); }
+  .mrow.head span {
+    font-family: var(--mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+  }
+  .mrow.group {
+    background: var(--surface-sunk); display: block; padding: 9px 18px;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint);
+    border-bottom: 1px solid var(--rule);
+  }
+  .mname { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+  .mcat { font-family: var(--mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-faint); }
+  .cell { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .verdict { font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; width: 38px; flex-shrink: 0; }
+  .v-pass { color: var(--pass); }
+  .v-fail { color: var(--fail); }
+  .v-part { color: var(--partial); }
+  .zval { font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--ink-soft); width: 38px; flex-shrink: 0; text-align: right; }
+  .meter { position: relative; flex: 1; height: 7px; min-width: 40px; background: var(--meter-track); overflow: hidden; }
+  .meter i { position: absolute; inset: 0 auto 0 0; display: block; }
+  .meter .thr { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--ink-faint); opacity: 0.85; }
+  .fill-pass { background: var(--pass); }
+  .fill-fail { background: var(--fail); }
+  .fill-part { background: var(--partial); }
+
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 8px 22px;
+    font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-bottom: 30px;
+  }
+  .legend span { display: flex; align-items: center; gap: 7px; }
+  .legend .tick { width: 1px; height: 11px; background: var(--ink-faint); }
+
+  .steps { list-style: none; padding: 0; margin: 20px 0 0; max-width: 700px; }
+  .steps li {
+    display: grid; grid-template-columns: 30px 1fr; gap: 14px;
+    padding: 14px 0; border-bottom: 1px solid var(--rule-soft);
+  }
+  .steps li:last-child { border-bottom: none; }
+  .steps .n { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--accent); padding-top: 3px; }
+  .steps .t { font-size: 16px; }
+  .steps .t b { font-family: var(--display); font-weight: 600; }
+  .steps .t span { display: block; color: var(--ink-soft); font-size: 14.5px; margin-top: 3px; line-height: 1.45; }
+
+  footer {
+    margin-top: 58px; padding-top: 22px; border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); line-height: 1.75;
+  }
+
+  @media (max-width: 660px) {
+    body { font-size: 16px; }
+    .mrow { grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+    .mrow.head { display: none; }
+    .mrow .mcat { grid-column: 2; text-align: right; }
+    .srow { grid-template-columns: 1fr 1fr; }
+    .srow.head { display: none; }
+    .smodel { grid-column: span 2; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Audiomark AI · MVP Validation</p>
+    <h1>Provenance doesn't survive the trip</h1>
+    <p class="standfirst">126 labeled tracks across three generators, 78 perturbation trials, and a benchmark against Meta's AudioSeal. Recall is 4.8% — and the reason reframes what the product has to be.</p>
+    <div class="meta">
+      <span><b>Prepared for</b> Tuesday review</span>
+      <span><b>Date</b> 8 Sep 2026</span>
+      <span><b>Corpus</b> Gemini · Suno · Udio · FMA</span>
+      <span><b>Tests</b> 55 passing</span>
+    </div>
+  </header>
+
+  <div class="board">
+    <div class="board-cell">
+      <p class="board-label">Detection recall</p>
+      <p class="board-figure"><span class="num-fail">4.8%</span></p>
+      <p class="board-note">4 of 84 AI tracks. Precision and specificity both 100% — it isn't guessing, it's blind.</p>
+    </div>
+    <div class="board-cell">
+      <p class="board-label">Manifest survives a transcode</p>
+      <p class="board-figure"><span class="num-pass">100%</span><span class="arrow">→</span><span class="num-fail">0%</span></p>
+      <p class="board-note">Every re-encode destroys C2PA — including 320 kbps and a lossless WAV bounce.</p>
+    </div>
+    <div class="board-cell">
+      <p class="board-label">Watermark survival</p>
+      <p class="board-figure"><span class="num-fail">68%</span><span class="arrow">→</span><span class="num-pass">96%</span></p>
+      <p class="board-note">Shipping decoder vs. proposed sync search, across 78 perturbation trials.</p>
+    </div>
+  </div>
+
+  <section class="col">
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <h2>The headline</h2>
+    </div>
+    <p>On a 126-file corpus spanning three generators, detection recall is <strong>4.8%</strong> — 4 of 84 AI tracks. Not because the code is wrong. Precision and specificity are both <strong>100%</strong>, and the four it catches it identifies perfectly, down to the content ID.</p>
+    <p>It is because <strong>provenance metadata does not survive redistribution</strong>. A single re-encode destroys it, and 95% of the AI corpus had already been through one.</p>
+    <div class="callout key">
+      <p class="callout-label">What this changes</p>
+      <p>Reading C2PA is necessary, and it now works. But it only ever sees files fetched straight from the generator. <strong>Everything downstream of that needs a watermark.</strong> This is the strongest argument in the deck, and it is now measured rather than asserted.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">02</span>
+      <h2>Why recall collapsed</h2>
+    </div>
+    <div class="col">
+      <p>The survival harness takes files that <em>are</em> known to carry a signed Google manifest, re-encodes them the way an upload pipeline would, and re-reads them.</p>
+    </div>
+
+    <div class="survival">
+      <div class="srow head"><span>Operation</span><span>Survived</span><span>Rate</span><span>What it models</span></div>
+      <div class="srow">
+        <span class="sname">original</span>
+        <span class="pips"><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i></span>
+        <span class="srate good">4/4 · 100%</span>
+        <span class="smodel">straight from the generator</span>
+      </div>
+      <div class="srow">
+        <span class="sname">mp3_320</span>
+        <span class="pips"><i class="pip off"></i><i class="pip off"></i><i class="pip off"></i><i class="pip off"></i></span>
+        <span class="srate hot">0/4 · 0%</span>
+        <span class="smodel">any upload pipeline</span>
+      </div>
+      <div class="srow">
+        <span class="sname">mp3_192</span>
+        <span class="pips"><i class="pip off"></i><i class="pip off"></i><i class="pip off"></i><i class="pip off"></i></span>
+        <span class="srate hot">0/4 · 0%</span>
+        <span class="smodel">streaming delivery</span>
+      </div>
+      <div class="srow">
+        <span class="sname">mp3_128</span>
+        <span class="pips"><i class="pip off"></i><i class="pip off"></i><i class="pip off"></i><i class="pip off"></i></span>
+        <span class="srate hot">0/4 · 0%</span>
+        <span class="smodel">lossy redistribution</span>
+      </div>
+      <div class="srow">
+        <span class="sname">wav_bounce</span>
+        <span class="pips"><i class="pip off"></i><i class="pip off"></i><i class="pip off"></i><i class="pip off"></i></span>
+        <span class="srate hot">0/4 · 0%</span>
+        <span class="smodel">a DAW export</span>
+      </div>
+      <div class="srow">
+        <span class="sname">id3_stripped</span>
+        <span class="pips"><i class="pip off"></i><i class="pip off"></i><i class="pip off"></i><i class="pip off"></i></span>
+        <span class="srate hot">0/4 · 0%</span>
+        <span class="smodel">a one-line strip</span>
+      </div>
+    </div>
+    <div class="legend"><span>filled = AI-generation claim still readable</span><span>n = 4 Gemini tracks with signed manifests</span></div>
+
+    <div class="col">
+      <p><strong>Every</strong> operation destroys it — including 320 kbps, which is sonically transparent, and a lossless WAV bounce that changes no audio at all. C2PA lives in the file <em>container</em>, and re-encoding rebuilds the container.</p>
+      <p>That also explains the Suno and Udio result. Those tracks were re-encoded with LAME 3.100 by the dataset authors and carry no ID3 tag whatsoever.</p>
+
+      <div class="callout">
+        <p class="callout-label">Don't over-claim this one</p>
+        <p>Their 0% shows what survives <em>collection and redistribution</em> — <strong>not</strong> that Suno and Udio never disclosed. We are reading tracks that were already stripped before we got them. Whether those platforms disclose at generation time is still an open question, and it needs first-party downloads to answer.</p>
+      </div>
+
+      <p>The consequence is worth stating plainly: Google already does both — a C2PA manifest <em>and</em> an inaudible SynthID watermark. The manifest dies on transcode. The watermark survives. And we cannot read it, because Google does not release the detector.</p>
+    </div>
+  </section>
+
+  <section class="col">
+    <div class="sec-head">
+      <span class="sec-num">03</span>
+      <h2>Detection missed real C2PA manifests</h2>
+      <span class="chip chip-fixed">Fixed</span>
+    </div>
+
+    <p>All four Gemini tracks carry a fully signed Google manifest. The disclosure sits in the file in plain terms:</p>
+
+    <div class="code"><span class="k">c2pa.created</span>  <span class="v">"Created by Google Generative AI."</span>
+              digitalSourceType: …/<span class="v">trainedAlgorithmicMedia</span>
+<span class="k">c2pa.edited</span>   <span class="v">"Applied imperceptible SynthID watermark."</span>
+
+signed by   Google LLC / Google Media Processing Services
+chaining to Google C2PA Root CA G3
+validation  <span class="v">Trusted</span>  (official C2PA trust list)</div>
+
+    <p>Before the fix, the tool reported these as <strong>“Unknown with metadata hints”</strong> — the strongest possible disclosure signal, on the exact statutory use case, scored as a near-miss.</p>
+    <p><code>scan_metadata</code> searched for the string <code>c2pa</code>, then parsed what followed as <strong>JSON</strong>. Production C2PA is <strong>CBOR inside JUMBF boxes</strong>, carried in an ID3 <code>GEOB</code> frame. The tool understood only the manifests it writes itself — it could read its own output and nothing else.</p>
+    <p>The fix is a dependency-free JUMBF walker and CBOR decoder. It reads identity only; cryptographic trust stays <code>c2patool</code>'s job, so an unvalidated manifest stays at claim level <em>detected</em>, never <em>verified</em>.</p>
+  </section>
+
+  <section class="col">
+    <div class="sec-head">
+      <span class="sec-num">04</span>
+      <h2>Accuracy at corpus scale</h2>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Cohort</th><th>Source</th><th>n</th><th>Detected</th></tr></thead>
+        <tbody>
+          <tr><td class="lead">Gemini</td><td class="dim">direct download</td><td>4</td><td class="good">4</td></tr>
+          <tr><td class="lead">Suno</td><td class="dim">SONICS, ICLR 2025</td><td>40</td><td class="hot">0</td></tr>
+          <tr><td class="lead">Udio</td><td class="dim">SONICS, ICLR 2025</td><td>40</td><td class="hot">0</td></tr>
+          <tr><td class="lead">Human</td><td class="dim">FMA small, 8 genres</td><td>41</td><td class="good">41 correct</td></tr>
+          <tr><td class="lead">AI-assisted</td><td class="dim">game soundtrack</td><td>1</td><td class="dim">scored apart</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th><th>Reading</th></tr></thead>
+        <tbody>
+          <tr><td class="lead">Accuracy</td><td>36.0%</td><td class="dim">45 of 125</td></tr>
+          <tr><td class="lead">Recall</td><td class="hot">4.8%</td><td class="dim">4 of 84 AI tracks</td></tr>
+          <tr><td class="lead">Precision</td><td class="good">100%</td><td class="dim">zero false positives</td></tr>
+          <tr><td class="lead">Specificity</td><td class="good">100%</td><td class="dim">41 of 41 human correct</td></tr>
+          <tr><td class="lead">Provider attribution</td><td class="good">4/4</td><td class="dim">all correctly named Google</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>All three verdict policies score identically, because nothing lands in the intermediate claim levels — a file either has a readable manifest or it has nothing at all.</p>
+    <p>The earlier 100% figure was real, but it measured only Gemini: the one provider with a clean C2PA implementation. Widening to Suno and Udio dropped recall by 95 points. That is exactly why the first run's <code>n=5</code> was labeled a smoke test rather than a validation.</p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">05</span>
+      <h2>The shipping decoder fails on MP3</h2>
+      <span class="chip chip-open">Decision needed</span>
+    </div>
+
+    <div class="col">
+      <p>Three carriers × 26 perturbations = 78 trials, scoring exact record-ID recovery. <strong>Every MP3 bitrate defeats the shipping decoder — including 320 kbps.</strong></p>
+      <p>The watermark is not the problem. MP3 adds ~1800 samples of codec delay. The payload survives intact — sync search recovers the exact record ID at z ≈ 13 — but the shipping decoder assumes it starts at sample 0, looks in the wrong place, and reports z ≈ 1.2.</p>
+    </div>
+
+    <div class="matrix">
+      <div class="mrow head"><span>Perturbation</span><span>Category</span><span>Baseline (shipping)</span><span>Sync search</span></div>
+
+      <div class="mrow group">Fails today — mark survives, decoder loses alignment</div>
+
+      <div class="mrow"><span class="mname">mp3_320</span><span class="mcat">codec</span>
+        <span class="cell"><span class="verdict v-fail">FAIL</span><span class="meter"><i class="fill-fail" style="width:5.9%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">1.19</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:65.1%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">13.01</span></span></div>
+
+      <div class="mrow"><span class="mname">mp3_192</span><span class="mcat">codec</span>
+        <span class="cell"><span class="verdict v-fail">FAIL</span><span class="meter"><i class="fill-fail" style="width:5.9%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">1.19</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:64.7%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">12.93</span></span></div>
+
+      <div class="mrow"><span class="mname">mp3_128</span><span class="mcat">codec</span>
+        <span class="cell"><span class="verdict v-fail">FAIL</span><span class="meter"><i class="fill-fail" style="width:5.9%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">1.19</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:62.3%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">12.45</span></span></div>
+
+      <div class="mrow"><span class="mname">mp3_96</span><span class="mcat">codec</span>
+        <span class="cell"><span class="verdict v-fail">FAIL</span><span class="meter"><i class="fill-fail" style="width:5.9%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">1.19</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:57.9%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">11.58</span></span></div>
+
+      <div class="mrow"><span class="mname">chain_master_mp3</span><span class="mcat">chain</span>
+        <span class="cell"><span class="verdict v-fail">FAIL</span><span class="meter"><i class="fill-fail" style="width:5.8%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">1.17</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:73.0%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.59</span></span></div>
+
+      <div class="mrow"><span class="mname">crop_0s5</span><span class="mcat">edit</span>
+        <span class="cell"><span class="verdict v-fail">FAIL</span><span class="meter"><i class="fill-fail" style="width:5.3%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">1.06</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:70.6%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.12</span></span></div>
+
+      <div class="mrow"><span class="mname">shift_1000</span><span class="mcat">edit</span>
+        <span class="cell"><span class="verdict v-fail">FAIL</span><span class="meter"><i class="fill-fail" style="width:5.0%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">1.00</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:71.8%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.35</span></span></div>
+
+      <div class="mrow"><span class="mname">lowpass_8k</span><span class="mcat">eq</span>
+        <span class="cell"><span class="verdict v-part">67%</span><span class="meter"><i class="fill-part" style="width:15.2%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">3.04</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:33.8%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">6.75</span></span></div>
+
+      <div class="mrow group">Watermark genuinely destroyed</div>
+
+      <div class="mrow"><span class="mname">time_stretch_1pct</span><span class="mcat">edit</span>
+        <span class="cell"><span class="verdict v-fail">FAIL</span><span class="meter"><i class="fill-fail" style="width:5.2%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">1.03</span></span>
+        <span class="cell"><span class="verdict v-fail">FAIL</span><span class="meter"><i class="fill-fail" style="width:6.2%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">1.24</span></span></div>
+
+      <div class="mrow group">Survives both decoders — 17 of 26</div>
+
+      <div class="mrow"><span class="mname">highpass_100</span><span class="mcat">eq</span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:91.7%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">18.33</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:90.9%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">18.18</span></span></div>
+
+      <div class="mrow"><span class="mname">compression</span><span class="mcat">dynamics</span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:81.5%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">16.29</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:80.9%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">16.18</span></span></div>
+
+      <div class="mrow"><span class="mname">soft_clip</span><span class="mcat">dynamics</span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:74.8%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.96</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:74.2%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.83</span></span></div>
+
+      <div class="mrow"><span class="mname">noise_snr20</span><span class="mcat">noise</span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:72.0%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.40</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:71.4%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.27</span></span></div>
+
+      <div class="mrow"><span class="mname">quantize_8bit</span><span class="mcat">quantization</span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:72.4%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.47</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:71.7%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.34</span></span></div>
+
+      <div class="mrow"><span class="mname">gain_plus_6db</span><span class="mcat">gain</span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:72.4%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.48</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:71.7%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.34</span></span></div>
+
+      <div class="mrow"><span class="mname">peak_normalize</span><span class="mcat">gain</span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:72.4%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.48</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:71.7%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.34</span></span></div>
+
+      <div class="mrow"><span class="mname">mix_bed_minus12db</span><span class="mcat">layering</span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:70.4%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.07</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:69.8%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">13.95</span></span></div>
+
+      <div class="mrow"><span class="mname">echo</span><span class="mcat">layering</span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:68.6%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">13.71</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:68.2%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">13.64</span></span></div>
+
+      <div class="mrow"><span class="mname">resample_22k</span><span class="mcat">resample</span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:32.4%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">6.47</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:32.1%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">6.41</span></span></div>
+
+      <div class="mrow"><span class="mname">none <span class="dim">(control)</span></span><span class="mcat">control</span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:72.4%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.48</span></span>
+        <span class="cell"><span class="verdict v-pass">PASS</span><span class="meter"><i class="fill-pass" style="width:71.7%"></i><span class="thr" style="left:12.5%"></span></span><span class="zval">14.34</span></span></div>
+    </div>
+
+    <div class="legend">
+      <span><span class="tick"></span> detection threshold, z = 2.5</span>
+      <span>meter scale 0 – 20 z</span>
+      <span>6 further passing rows omitted — identical to shown siblings</span>
+    </div>
+
+    <div class="col">
+      <p><strong>The fix is contained.</strong> A shift of <em>d</em> samples is <code>q·BIT_LEN + r</code>, so sweeping the sub-bit offset <em>r</em> over <code>[0, BIT_LEN)</code> and the payload phase <code>q mod NBITS</code> covers every possible misalignment. One FFT cross-correlation gets all offsets at once. Runtime is <strong>0.07–0.28 s</strong> per 30 seconds of audio.</p>
+      <p>It is written and tested in <code>eval/detectors.py</code>, and deliberately <strong>not</strong> merged — changing the shipping decoder is the team's call, not a side effect of a validation pass.</p>
+      <p>One perturbation is genuinely fatal: a <strong>1% tempo change</strong> rescales the bit grid itself.</p>
+    </div>
+  </section>
+
+  <section class="col">
+    <div class="sec-head">
+      <span class="sec-num">06</span>
+      <h2>Benchmarked against Meta AudioSeal</h2>
+    </div>
+
+    <p>AudioSeal is the one third-party scheme we can measure end to end, because its detector is public — unlike SynthID's.</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th></th><th>Audiomark</th><th>AudioSeal</th></tr></thead>
+        <tbody>
+          <tr><td class="lead">Embedding SNR</td><td class="hot">20.1 dB</td><td class="good">36.6 dB</td></tr>
+          <tr><td class="lead">Detects its own mark</td><td class="good">yes</td><td class="good">yes (p = 1.00)</td></tr>
+          <tr><td class="lead">Detects the other's</td><td class="hot">no</td><td class="hot">no (p = 0.13)</td></tr>
+          <tr><td class="lead">False positive on clean</td><td class="good">no</td><td class="good">no (p = 0.06)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>We are blind to AudioSeal.</strong> It ships in Meta's audio models and already sits in our provider catalog, so AudioSeal-watermarked audio is a live coverage gap. Its detector is open, so this one is fixable — at the cost of a torch dependency, which is a real question for a Vercel deployment.</p>
+    <p><strong>Our watermark is ~16 dB louder than Meta's.</strong> That buys robustness — we beat AudioSeal on 20 dB SNR noise, where it drops to p = 0.51 — but 20 dB under the music is loud enough that nobody should call it imperceptible without a listening test.</p>
+  </section>
+
+  <section class="col">
+    <div class="sec-head">
+      <span class="sec-num">07</span>
+      <h2>Smaller findings</h2>
+    </div>
+
+    <h3>Vendor hints fire on random audio bytes <span class="chip chip-open">Open</span></h3>
+    <p>The metadata scan reads the whole file, audio payload included. Two false hits across the corpus — “Meta” on a Gemini track, “OpenAI” on an FMA human recording. Thirteen of 47 vendor aliases are five characters or fewer. Both stayed hints and never became positives, so precision held, but scoping the scan to metadata regions removes the class.</p>
+
+    <h3>32-bit float WAVs bypass the primary reader</h3>
+    <p>Stdlib <code>wave</code> rejects them; detection falls back to miniaudio and still works. The fallback is load-bearing for a format DAWs export by default.</p>
+
+    <h3>A bug in our own harness, for the record</h3>
+    <p>The first AudioSeal run showed MP3 destroying <em>both</em> watermarks. That was wrong. 192 kbps is illegal at 16 kHz, so LAME silently switched MPEG layers and resampled to 44.1 kHz — a 2.8× time-scale change, reported as codec damage. The perturbation now clamps to the rate's legal bitrate ladder and converts back. The 44.1 kHz results were never affected.</p>
+  </section>
+
+  <section class="col">
+    <div class="sec-head">
+      <span class="sec-num">08</span>
+      <h2>What is still unmeasured</h2>
+      <span class="chip chip-blocked">Blocked</span>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Source</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="lead">Gemini · Suno · Udio · human</td><td class="good">done — 125 files</td></tr>
+          <tr><td class="lead">ElevenLabs</td><td class="dim">needs a subscription</td></tr>
+          <tr><td class="lead">OpenAI audio + provenance API</td><td class="dim">needs an API key</td></tr>
+          <tr><td class="lead">SynthID decoding</td><td class="hot">not possible — detector unreleased</td></tr>
+          <tr><td class="lead">Claude</td><td class="dim">n/a — does not generate audio</td></tr>
+          <tr><td class="lead">Suno / Udio <em>at source</em></td><td class="hot">needs first-party downloads</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>That last row is the highest-value remaining test. Everything we know about Suno and Udio comes from tracks already stripped by redistribution. Whether they disclose at generation time is still open — and it decides whether reading manifests is worth anything for those two providers.</p>
+  </section>
+
+  <section class="col">
+    <div class="sec-head">
+      <span class="sec-num">09</span>
+      <h2>Recommended next steps</h2>
+    </div>
+
+    <ol class="steps">
+      <li><span class="n">01</span><span class="t"><b>Lead with the survival result.</b><span>“Provenance metadata does not survive a single transcode” is the clearest argument for watermarking, and it is now measured rather than asserted.</span></span></li>
+      <li><span class="n">02</span><span class="t"><b>Ship c2patool and a trust list.</b><span>Without it, <em>verified</em> is unreachable — the four Gemini tracks stop short at <em>detected</em>.</span></span></li>
+      <li><span class="n">03</span><span class="t"><b>Decide on sync search.</b><span>68% → 96%, written and tested. The difference between the watermark working or not on released audio.</span></span></li>
+      <li><span class="n">04</span><span class="t"><b>Get first-party Suno and Udio downloads.</b><span>One paid month settles the open question and is the last big unknown in the accuracy number.</span></span></li>
+      <li><span class="n">05</span><span class="t"><b>Scope the vendor-hint scan to metadata regions.</b><span>Removes a false-positive class that grows with corpus size.</span></span></li>
+      <li><span class="n">06</span><span class="t"><b>Run a listening test at 20 dB SNR.</b><span>We are 16 dB louder than Meta's production watermark.</span></span></li>
+      <li><span class="n">07</span><span class="t"><b>Consider an AudioSeal detector.</b><span>Closes a real coverage gap; weigh the torch dependency against the Vercel deployment.</span></span></li>
+    </ol>
+  </section>
+
+  <footer>
+    Harnesses: <code>fetch_corpus.py</code> · <code>run_detection_eval.py</code> · <code>run_provenance_survival.py</code> · <code>run_robustness.py</code> · <code>audioseal_probe.py</code><br>
+    Corpus (~87 MB) rebuilds from public sources — SONICS (ICLR 2025) and FMA — via HTTP range requests, no 45 GB download.<br>
+    Full engineering record in <code>REPORT.md</code>. Raw results in <code>eval/results/</code>. 55 tests passing.
+  </footer>
+
+</div>

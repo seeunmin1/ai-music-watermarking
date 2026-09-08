@@ -43,21 +43,44 @@ def _claim_level(status: str) -> str:
 
 
 def _manifest_signal(meta: dict[str, Any]) -> dict[str, Any] | None:
-    if not meta.get("manifest"):
+    manifest = meta.get("manifest")
+    if not manifest:
         return None
     fields = meta.get("fields") or {}
+    declares_ai = bool(isinstance(manifest, dict) and manifest.get("declares_ai_generated"))
+    if declares_ai:
+        detail = (
+            "C2PA manifest declares AI-generated content "
+            f"(digitalSourceType {fields.get('digitalSourceType')}); "
+            "signature trust must still be validated by c2patool or an official adapter"
+        )
+    else:
+        detail = (
+            "Embedded C2PA-style disclosure manifest parsed; signature trust must be "
+            "validated by c2patool or an official adapter"
+        )
     return {
         "id": "c2pa_manifest",
         "label": PROFILES["c2pa_manifest"]["label"],
         "category": "C2PA detected",
         "status": "detected",
         "claimLevel": "detected",
-        "confidence": 35,
+        "confidence": 55 if declares_ai else 35,
         "provider": fields.get("provider"),
         "system": fields.get("system"),
         "contentId": fields.get("uid") or fields.get("unique_id"),
         "createdAt": fields.get("created"),
-        "detail": "Embedded C2PA-style disclosure manifest parsed; signature trust must be validated by c2patool or an official adapter",
+        "detail": detail,
+        "declaresAiGenerated": declares_ai,
+        "manifestFormat": meta.get("manifest_format"),
+        "evidence": {
+            "digitalSourceTypes": (manifest.get("digital_source_types") if isinstance(manifest, dict) else None),
+            "actionDescriptions": fields.get("descriptions"),
+            "certificateOrganizations": (
+                manifest.get("certificate_organizations") if isinstance(manifest, dict) else None
+            ),
+            "signaturePresent": (manifest.get("signature_present") if isinstance(manifest, dict) else None),
+        },
     }
 
 
@@ -292,6 +315,7 @@ def _display_copy(
     provider_signal: dict[str, Any] | None,
     provider_verification_status: str,
     verdict: str,
+    declares_ai: bool = False,
 ) -> tuple[str, str]:
     provider = provider_signal.get("provider") if provider_signal else None
     system = provider_signal.get("system") if provider_signal else None
@@ -311,6 +335,12 @@ def _display_copy(
             f"Likely source: {provider_name}; {status}" if provider_name else "Provider not resolved"
         )
     if generation_claim_level == "detected":
+        if declares_ai:
+            return "AI-generated (declared, signature not validated)", (
+                f"Manifest declares AI generation by {provider_name}; signature not trust-validated"
+                if provider_name
+                else "Manifest declares AI generation; signature not trust-validated"
+            )
         return "C2PA manifest found", (
             f"Possible provider: {provider_name}; signer not trusted" if provider_name else "Signer not trusted"
         )
@@ -371,11 +401,13 @@ def analyze_provenance(
     provider_claim_level = provider_signal.get("claimLevel", "unknown") if provider_signal else "unknown"
     provider_verification_status = _provider_verification_status(provider_signal, official_status)
     generation_claim_level = claim_level
+    declares_ai_generated = any(s.get("declaresAiGenerated") for s in signals)
     display_title, display_subtitle = _display_copy(
         generation_claim_level,
         provider_signal,
         provider_verification_status,
         verdict,
+        declares_ai_generated,
     )
 
     limitations = []
@@ -400,6 +432,7 @@ def analyze_provenance(
         "providerVerificationStatus": provider_verification_status,
         "displayTitle": display_title,
         "displaySubtitle": display_subtitle,
+        "declaresAiGenerated": declares_ai_generated,
         "provider": primary.get("provider") if primary else None,
         "attributedProvider": provider_signal.get("provider") if provider_signal else None,
         "attributedSystem": provider_signal.get("system") if provider_signal else None,

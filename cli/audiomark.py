@@ -39,6 +39,8 @@ from pathlib import Path
 
 import numpy as np
 
+from c2pa_jumbf import manifest_fields as c2pa_manifest_fields
+from c2pa_jumbf import parse_c2pa_store
 from local_attribution import DEFAULT_MODEL_PATH, classify, train_centroid_model
 from official_adapters import run_official_checks
 from provider_catalog import vendor_labels_from_catalog
@@ -330,8 +332,18 @@ def scan_metadata(data: bytes) -> dict:
 
     res = {"id3": data[:3] == b"ID3",
            "jumbf": b"jumb" in low or b"jumd" in low,
-           "manifest": None, "fields": None,
+           "manifest": None, "fields": None, "manifest_format": None,
            "vendor_hints": [v for v in VENDOR_HINTS if _vendor_present(v)]}
+
+    # Production C2PA is CBOR inside JUMBF boxes, which is what Google, Adobe
+    # and other providers actually ship. Try that first; the JSON scan below
+    # only recognizes the manifests this project writes into its own WAVs.
+    jumbf_manifest = parse_c2pa_store(data)
+    if jumbf_manifest:
+        res["manifest"] = jumbf_manifest
+        res["fields"] = c2pa_manifest_fields(jumbf_manifest)
+        res["manifest_format"] = "jumbf_cbor"
+        return res
 
     i = 0
     while res["manifest"] is None:
@@ -342,6 +354,7 @@ def scan_metadata(data: bytes) -> dict:
         i = idx + 4
 
     if res["manifest"]:
+        res["manifest_format"] = "audiomark_json"
         m = res["manifest"]
         stat = next((a.get("data", {}) for a in m.get("assertions", [])
                      if "statutory" in a.get("label", "")), {})
@@ -528,7 +541,10 @@ def _print_detect(res: dict, name: str):
     prov = res["provenance"]
     bar = "-" * 62
     verdict = "AI-GENERATED" if res["ai_detected"] else (
-        "C2PA MANIFEST FOUND / SIGNER NOT TRUSTED" if prov["generationClaimLevel"] == "detected"
+        ("AI-GENERATED (DECLARED) / SIGNATURE NOT VALIDATED"
+         if prov.get("declaresAiGenerated")
+         else "C2PA MANIFEST FOUND / SIGNER NOT TRUSTED")
+        if prov["generationClaimLevel"] == "detected"
         else "PROBABLY AI-GENERATED" if prov["claimLevel"] == "probable"
         else "UNKNOWN WITH METADATA HINTS" if prov["verdict"] == "unknown_with_hints"
         else "HUMAN CREATED / UNMARKED"
