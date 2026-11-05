@@ -1,0 +1,14 @@
+.git
+.venv
+.uv-cache
+.uv-python
+.tools
+.pytest_cache
+**/.pytest_cache
+**/__pycache__
+runtime-bin
+reports
+test-audio
+vendor
+web/node_modules
+web/dist

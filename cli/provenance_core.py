@@ -336,7 +336,7 @@ def _display_copy(
         )
     if generation_claim_level == "detected":
         if declares_ai:
-            return "AI-generated (declared, signature not validated)", (
+            return "AI-generated (declared, signer not trusted)", (
                 f"Manifest declares AI generation by {provider_name}; signature not trust-validated"
                 if provider_name
                 else "Manifest declares AI generation; signature not trust-validated"

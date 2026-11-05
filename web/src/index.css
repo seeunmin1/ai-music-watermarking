@@ -85,13 +85,10 @@ a {
 }
 
 .brand-mark {
-  align-items: center;
-  background: var(--ink);
-  border-radius: 8px;
-  color: #ffffff;
-  display: inline-flex;
+  display: block;
+  flex-shrink: 0;
   height: 32px;
-  justify-content: center;
+  object-fit: contain;
   width: 32px;
 }
 

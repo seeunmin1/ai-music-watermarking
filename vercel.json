@@ -6,7 +6,7 @@
   "outputDirectory": "web/dist",
   "functions": {
     "api/**/*.py": {
-      "excludeFiles": "{vendor/**,test-audio/**,web/**,.venv/**,.uv-cache/**,.uv-python/**}"
+      "excludeFiles": "{vendor/**,test-audio/**,web/**,.tools/**,runtime-bin/**,reports/**,.venv/**,.uv-cache/**,.uv-python/**}"
     }
   },
   "rewrites": [

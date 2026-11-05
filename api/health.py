@@ -1,10 +1,17 @@
 from http.server import BaseHTTPRequestHandler
+import importlib.util
 import json
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        body = json.dumps({"ok": True}).encode("utf-8")
+        body = json.dumps({
+            "ok": True,
+            "c2pa": {
+                "manifest_reader": True,
+                "sdk_available": importlib.util.find_spec("c2pa") is not None,
+            },
+        }).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Cache-Control", "no-store")

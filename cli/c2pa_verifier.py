@@ -13,6 +13,7 @@ import os
 import re
 import shutil
 import subprocess
+from pathlib import Path
 from typing import Any
 
 OFFICIAL_C2PA_TRUST_ANCHORS = (
@@ -43,8 +44,16 @@ def _first_json_object(text: str) -> dict[str, Any] | None:
     return None
 
 
+def c2patool_path() -> str | None:
+    override = os.getenv("AUDIOMARK_C2PATOOL_PATH")
+    if override:
+        return override
+    bundled = Path(__file__).resolve().parents[1] / "runtime-bin" / ("c2patool.exe" if os.name == "nt" else "c2patool")
+    return str(bundled) if bundled.is_file() else shutil.which("c2patool")
+
+
 def _run_c2patool(path: str, args: list[str]) -> dict[str, Any]:
-    exe = os.getenv("AUDIOMARK_C2PATOOL_PATH") or shutil.which("c2patool")
+    exe = c2patool_path()
     if not exe:
         return {
             "available": False,
@@ -77,6 +86,46 @@ def _run_c2patool(path: str, args: list[str]) -> dict[str, Any]:
         "stderr": proc.stderr,
         "json": _first_json_object(proc.stdout),
     }
+
+
+def _run_c2pa_sdk(path: str) -> dict[str, Any]:
+    """Read and validate an asset with the official Python SDK."""
+    try:
+        from c2pa import Context, Reader
+    except ImportError:
+        return {
+            "available": False,
+            "ok": False,
+            "status": "tool_not_configured",
+            "detail": "Neither c2pa-python nor c2patool is installed.",
+        }
+    try:
+        settings = {
+            "verify": {
+                "verify_after_reading": True,
+                "verify_trust": True,
+                "verify_timestamp_trust": True,
+                "remote_manifest_fetch": False,
+                "ocsp_fetch": False,
+            }
+        }
+        with Context.from_dict(settings) as context:
+            with Reader(path, context=context) as reader:
+                report = json.loads(reader.json())
+        return {
+            "available": True,
+            "ok": True,
+            "status": "ok",
+            "detail": "C2PA Python SDK validation completed.",
+            "json": report,
+        }
+    except Exception as exc:
+        return {
+            "available": True,
+            "ok": False,
+            "status": "error",
+            "detail": f"C2PA Python SDK validation failed: {exc}",
+        }
 
 
 def _trust_args() -> list[str]:
@@ -163,11 +212,14 @@ def inspect_c2pa_asset(path: str | None, meta: dict[str, Any]) -> dict[str, Any]
     tool_detail = "No asset path supplied; using extracted metadata only."
 
     if path:
-        manifest_report = _run_c2patool(path, [])
-        trust_report = _run_c2patool(path, _trust_args())
-        certs_report = _run_c2patool(path, ["--certs"])
+        if c2patool_path():
+            manifest_report = _run_c2patool(path, [])
+            trust_report = _run_c2patool(path, _trust_args())
+            certs_report = _run_c2patool(path, ["--certs"])
+        else:
+            manifest_report = trust_report = _run_c2pa_sdk(path)
         tool_status = trust_report.get("status", "unknown")
-        tool_detail = trust_report.get("detail") or trust_report.get("stderr") or "c2patool trust completed."
+        tool_detail = trust_report.get("detail") or trust_report.get("stderr") or "C2PA validation completed."
 
     manifest_json = (manifest_report or {}).get("json")
     trust_json = (trust_report or {}).get("json")
@@ -180,7 +232,8 @@ def inspect_c2pa_asset(path: str | None, meta: dict[str, Any]) -> dict[str, Any]
     trusted_signature = bool(
         (trust_report or {}).get("ok")
         and manifest_found
-        and (validation_state == "trusted" or not trust_validation_status)
+        and validation_state == "trusted"
+        and not trust_validation_status
     )
     extracted_fields = _extract_fields_from_report(trust_json) or _extract_fields_from_report(manifest_json)
     certificate_text = (certs_report or {}).get("stdout") or ""

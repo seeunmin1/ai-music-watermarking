@@ -20,7 +20,9 @@ if str(CLI_DIR) not in sys.path:
 import audiomark  # noqa: E402
 
 
-MAX_UPLOAD_BYTES = 4 * 1024 * 1024
+# Keep enough headroom below Vercel's 4.5 MB request-body limit for the
+# multipart envelope while accepting the 4,249,196-byte Gemini fixture.
+MAX_UPLOAD_BYTES = 4_400_000
 
 
 def _discard_audit_log(*_args, **_kwargs):
@@ -86,7 +88,7 @@ class handler(BaseHTTPRequestHandler):
         if content_length <= 0:
             raise RequestError("Audio upload is empty.")
         if content_length > MAX_UPLOAD_BYTES:
-            raise RequestError("Audio upload exceeds the 4 MB request limit.", 413)
+            raise RequestError("Audio upload exceeds the 4.4 MB request limit.", 413)
 
         body = self.rfile.read(content_length)
         file_bytes, filename, media_type = _extract_multipart_file(body, content_type)

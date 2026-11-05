@@ -4,6 +4,7 @@ import {
 } from "./dsp.js";
 import { loadState, saveState, buildManifest } from "./persistence.js";
 import { analyzeProvenance, VENDOR_LABELS } from "./provenance.js";
+import { checkBackendHealth, detectWithBackend } from "./backend.js";
 
 const DETECTION_API_URL = import.meta.env.VITE_PROVENANCE_API_URL || "/api";
 const EMPTY_WATERMARK = { found: false, recordId: 0, z: 0, confidence: 0, repetitions: 0 };
@@ -107,23 +108,35 @@ function Waveform({ samples }) {
 
 export default function AudiomarkAI() {
   const [mode, setMode] = useState("detect"); // detect | embed
-  const [registry, setRegistry] = useState([]);
+  // Retained history supports verification; only this visit's IDs reach the table.
+  const [registry, setRegistry] = useState(() => loadState("registry", []));
+  const [visitRegistryIds, setVisitRegistryIds] = useState(() => new Set());
+  const visibleRegistry = registry.filter((rec) => visitRegistryIds.has(rec.uid));
   const [audit, setAudit] = useState([]);
+  const retainedAudit = useRef(null);
+  if (retainedAudit.current === null) retainedAudit.current = loadState("audit", []);
   const [manifestEnabled, setManifestEnabled] = useState(true);
-  const [form, setForm] = useState({ provider: "Audiomark Labs", system: "DemoTTS", version: "1.0" });
+  const [form, setForm] = useState({ provider: "Segno", system: "DemoTTS", version: "1.0" });
   const [backendStatus, setBackendStatus] = useState(DETECTION_API_URL ? "checking" : "browser_only");
 
   useEffect(() => {
-    setRegistry(loadState("registry", []));
-    setAudit(loadState("audit", []));
+    const onPageShow = (event) => {
+      if (!event.persisted) return;
+      setVisitRegistryIds(new Set());
+      setAudit([]);
+      setRegistry(loadState("registry", []));
+      retainedAudit.current = loadState("audit", []);
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
 
   useEffect(() => {
     if (!DETECTION_API_URL) return;
     let cancelled = false;
-    fetch(`${DETECTION_API_URL.replace(/\/$/, "")}/health`)
-      .then((res) => {
-        if (!cancelled) setBackendStatus(res.ok ? "connected" : "unreachable");
+    checkBackendHealth(DETECTION_API_URL)
+      .then(() => {
+        if (!cancelled) setBackendStatus("connected");
       })
       .catch(() => {
         if (!cancelled) setBackendStatus("unreachable");
@@ -132,11 +145,10 @@ export default function AudiomarkAI() {
   }, []);
 
   const log = useCallback((type, detail) => {
-    setAudit((prev) => {
-      const next = [{ t: new Date().toISOString(), type, detail }, ...prev].slice(0, 200);
-      saveState("audit", next);
-      return next;
-    });
+    const entry = { t: new Date().toISOString(), type, detail };
+    retainedAudit.current = [entry, ...retainedAudit.current].slice(0, 200);
+    saveState("audit", retainedAudit.current);
+    setAudit((prev) => [entry, ...prev].slice(0, 200));
   }, []);
 
   const fmtT = (iso) => (iso ? new Date(iso).toLocaleString() : "—");
@@ -186,23 +198,18 @@ export default function AudiomarkAI() {
       let backendUsed = false;
       if (DETECTION_API_URL) {
         try {
-          const fd = new FormData();
-          fd.append("file", dFile.file);
-          const backend = await fetch(`${DETECTION_API_URL.replace(/\/$/, "")}/detect`, { method: "POST", body: fd });
-          if (backend.ok) {
-            const enriched = await backend.json();
-            const backendWm = normalizeBackendDetection(enriched?.detection);
-            const backendMeta = normalizeBackendMetadata(enriched?.metadata);
-            if (backendWm) wm = backendWm;
-            meta = mergeMetadata(meta, backendMeta);
-            if (enriched?.provenance) provenance = enriched.provenance;
-            if (enriched?.audio_decode) audioDecode = enriched.audio_decode;
-            if (enriched?.classifier) classifier = enriched.classifier;
-            backendUsed = true;
-            setBackendStatus("connected");
-          }
+          const enriched = await detectWithBackend(DETECTION_API_URL, dFile.file);
+          const backendWm = normalizeBackendDetection(enriched?.detection);
+          const backendMeta = normalizeBackendMetadata(enriched?.metadata);
+          if (backendWm) wm = backendWm;
+          meta = mergeMetadata(meta, backendMeta);
+          provenance = enriched.provenance;
+          if (enriched?.audio_decode) audioDecode = enriched.audio_decode;
+          if (enriched?.classifier) classifier = enriched.classifier;
+          backendUsed = true;
+          setBackendStatus("connected");
         } catch {
-          provenance.limitations = [...provenance.limitations, "Configured backend detection API was unreachable; browser-only checks were used."];
+          provenance.limitations = [...provenance.limitations, "Backend detection was unavailable or returned an invalid response; browser-only checks were used. Embedded C2PA declarations may be missed."];
           setBackendStatus("unreachable");
         }
       }
@@ -255,6 +262,7 @@ export default function AudiomarkAI() {
       rec.wavHash = await sha256Hex(await wavBlob.arrayBuffer());
       const wavUrl = URL.createObjectURL(wavBlob);
       setRegistry((prev) => { const next = [rec, ...prev]; saveState("registry", next); return next; });
+      setVisitRegistryIds((prev) => new Set([...prev, rec.uid]));
       log("embed", `Embedded record ${rec.idHex}${manifestEnabled ? " + in-file C2PA manifest" : " (manifest disclosure off — latent mark only)"} into "${src.name}" (${em.repetitions}x redundancy) for ${form.provider}/${form.system} v${form.version}`);
       setERes({ rec, wavUrl, manUrl, wmSamples: em.samples });
     } catch (e) { setEErr("Embedding failed: " + e.message); }
@@ -350,9 +358,9 @@ export default function AudiomarkAI() {
     <main>
       <section className="hero-shell">
         <nav className="topbar" aria-label="Primary">
-          <a className="brand" href="#verify" aria-label="Audiomark AI home">
-            <span className="brand-mark">A</span>
-            <span>Audiomark AI</span>
+          <a className="brand" href="#verify" aria-label="Segno home">
+            <img className="brand-mark" src="/segno.svg" alt="" width="32" height="32" />
+            <span>Segno</span>
           </a>
           <div className="nav-actions">
             <a href="#signals">Signals</a>
@@ -416,16 +424,24 @@ export default function AudiomarkAI() {
                 {dRes?.error && <div className="result-box bad"><div><span className="result-label">Error</span><p>{dRes.error}</p></div></div>}
 
                 {dRes && !dRes.error && (
-                  <div className={"result-box visible" + (!dRes.aiDetected ? "" : "")}>
-                    <div>
-                      <span className="result-label">{dRes.provenance.displayTitle}</span>
-                      <strong>{dRes.provenance.displaySubtitle}</strong>
-                      <p>{dFile?.name} — {dRes.audioDecode?.status || "decode not run"} · {dRes.classifier?.status || "classifier not run"} · {dRes.provenance.resolvedVia || dRes.provenance.attributionResolvedVia || "not resolved"}</p>
+                  <>
+                    {!dRes.backendUsed && (
+                      <p className="inline-warning" role="status">
+                        Browser-only result: backend detection was unavailable. Embedded C2PA declarations may be missed.
+                        {import.meta.env.DEV && " Start the Python backend on port 8787 and run the check again."}
+                      </p>
+                    )}
+                    <div className={"result-box visible" + (!dRes.aiDetected ? "" : "")}>
+                      <div>
+                        <span className="result-label">{dRes.provenance.displayTitle}</span>
+                        <strong>{dRes.provenance.displaySubtitle}</strong>
+                        <p>{dFile?.name} — {dRes.audioDecode?.status || "decode not run"} · {dRes.classifier?.status || "classifier not run"} · {dRes.provenance.resolvedVia || dRes.provenance.attributionResolvedVia || "not resolved"}</p>
+                      </div>
+                      <div className="confidence-ring" style={{ "--pct": String(dRes.provenance.confidence) }}>
+                        {dRes.provenance.attributionConfidence || dRes.provenance.confidence}
+                      </div>
                     </div>
-                    <div className="confidence-ring" style={{ "--pct": String(dRes.provenance.confidence) }}>
-                      {dRes.provenance.attributionConfidence || dRes.provenance.confidence}
-                    </div>
-                  </div>
+                  </>
                 )}
               </>
             )}
@@ -591,18 +607,18 @@ export default function AudiomarkAI() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Provenance Registry</p>
-            <h2>Records created in this browser</h2>
+            <h2>Records created during this visit</h2>
           </div>
         </div>
         <div className="data-card">
-          {registry.length === 0 ? (
-            <p className="empty-note">No records yet. Use <b>Embed</b> above to create the first registry entry.</p>
+          {visibleRegistry.length === 0 ? (
+            <p className="empty-note">No records this visit. Use <b>Embed</b> above to create the first registry entry.</p>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table className="data-table">
                 <thead><tr><th>ID</th><th>Provider / System</th><th>Created</th><th>File</th><th>Status</th><th></th></tr></thead>
                 <tbody>
-                  {registry.map((r) => (
+                  {visibleRegistry.map((r) => (
                     <tr key={r.uid}>
                       <td className="mono">{r.idHex}</td>
                       <td>{r.provider}<div style={{ color: "var(--muted)", fontSize: 12 }}>{r.system} v{r.version}</div></td>
@@ -627,12 +643,12 @@ export default function AudiomarkAI() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Audit Log</p>
-            <h2>Every verify, embed, revocation, and feedback event</h2>
+            <h2>Verify, embed, revocation, and feedback events from this visit</h2>
           </div>
         </div>
         <div className="data-card">
           {audit.length === 0 ? (
-            <p className="empty-note">No events yet.</p>
+            <p className="empty-note">No events this visit.</p>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table className="data-table">

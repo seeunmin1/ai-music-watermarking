@@ -11,6 +11,12 @@ by one decodes in the other:
   client-side (Web Audio API, `crypto.subtle` for SHA-256, no server): drop
   in a file for an instant statutory verdict, or embed a watermark + manifest
   into a WAV. Registry and audit log persist to the browser's `localStorage`.
+  Their tables show only records created during the current page visit; refresh,
+  reopening, or back/forward cache restoration starts with empty tables. Prior
+  records remain in browser storage, and retained registry entries still support
+  explicit provenance checks. Separate tabs have independent visible histories.
+  No database integration or migration is included yet; browser history remains
+  available for a future migration, subject to the existing 200-event audit limit.
 - **[`cli/audiomark.py`](cli/audiomark.py)** — a Python CLI for the same
   embed/detect/registry/audit operations, for scripting or server-side use.
 
@@ -50,6 +56,19 @@ cd web
 npm install
 npm run dev
 ```
+
+For the same manifest parsing used by the deployed app, also start the Python
+backend in a separate terminal from the repository root:
+
+```bash
+python -m pip install -r requirements.txt
+python cli/detection_server.py --host 127.0.0.1 --port 8787
+```
+
+The Vite dev server proxies `/api` to this backend. Without it, detection uses
+browser-only checks and displays a warning; those checks can miss embedded
+JUMBF/CBOR C2PA declarations that the Python backend reads. An AI-generation
+declaration is distinct from a trust-validated provider signature.
 
 Then open the printed local URL. `npm run build` produces a static
 production bundle in `web/dist/` (deployable to any static host — Vercel,
@@ -97,8 +116,8 @@ The checked-in `vercel.json` pins the Vite framework, installs frontend
 dependencies from `web/`, and supplies the build/output configuration.
 `/api/detect` accepts a `multipart/form-data`
 upload under the `file` field, uses a temporary file only for the request, and
-does not persist serverless audit records. The current function limits uploads
-to 4 MB, within Vercel request limits.
+does not persist serverless audit records. The current function limits file
+uploads to 4.4 MB, leaving room below Vercel's 4.5 MB request-body limit.
 
 Set optional server-side environment variables in Vercel when the corresponding
 integrations are available: `OPENAI_API_KEY`, `AUDIOMARK_C2PATOOL_PATH`,
@@ -109,6 +128,13 @@ variables used by your configured provider adapters. Do not set
 the deployed same-origin API by default.
 
 ### External C2PA verification
+
+Vercel installs the pinned official `c2pa-python` SDK with the Python API. It
+reads embedded JUMBF/CBOR manifests and validates their signatures using its
+built-in trust configuration. Remote manifest fetching is disabled. For local
+development, run `node scripts/install-c2patool.mjs` to install the official
+checksum-pinned Windows or Linux x64 executable into `runtime-bin/`; the backend
+discovers it automatically after restart.
 
 Install `c2patool` on the backend host and make it available on `PATH`, or set:
 

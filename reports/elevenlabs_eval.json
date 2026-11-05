@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "purpose": "Probabilistic ElevenLabs attribution; not watermark-key verification",
+  "dataset": {
+    "samples": 12,
+    "groups": 8,
+    "labels": {
+      "ElevenLabs": 1,
+      "Gemini": 4,
+      "Human": 7
+    },
+    "codecs": {
+      "mp3": 12
+    }
+  },
+  "failures": [],
+  "training": {
+    "status": "insufficient_data",
+    "reason": "Label 'ElevenLabs' needs at least 3 independent groups for train/validation/test; found 1."
+  },
+  "limitations": [
+    "ElevenLabs does not publish the watermark key used by its official detector.",
+    "Classifier results are statistical attribution and must not be presented as verified provenance."
+  ],
+  "csv_output": "reports\\elevenlabs_eval.csv"
+}

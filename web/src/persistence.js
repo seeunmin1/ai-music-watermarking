@@ -4,7 +4,13 @@ import { NBITS } from "./dsp.js";
 export function loadState(key, fallback) {
   try {
     const raw = localStorage.getItem("audiomark:" + key);
-    return raw ? JSON.parse(raw) : fallback;
+    const value = raw ? JSON.parse(raw) : fallback;
+    // Registry and audit history must be arrays, even when storage is valid JSON.
+    if (Array.isArray(fallback) && (
+      !Array.isArray(value)
+      || value.some((item) => !item || typeof item !== "object" || Array.isArray(item))
+    )) return fallback;
+    return value;
   } catch {
     return fallback;
   }
